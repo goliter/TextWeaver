@@ -1,0 +1,24 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: textweaver-db
+    environment:
+      POSTGRES_USER: textweaver      # 用户名
+      POSTGRES_PASSWORD: password   # 密码（生产环境要改）
+      POSTGRES_DB: textweaver_dev    # 数据库名
+    ports:
+      - "5432:5432"                 # 本地端口:容器端口
+    volumes:
+      # 数据持久化
+      - postgres_data:/var/lib/postgresql/data
+      # 初始化脚本（可选）
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U textweaver -d textweaver_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
