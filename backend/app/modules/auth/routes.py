@@ -34,3 +34,11 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
+
+#通过邮箱获取用户
+@router.get("/users/email/{email}", response_model=schemas.UserResponse)
+def read_user_by_email(email: str, db: Session = Depends(get_db)):
+    db_user = db.query(crud.models.User).filter(crud.models.User.email == email).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
