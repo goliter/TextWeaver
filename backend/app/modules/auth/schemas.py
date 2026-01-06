@@ -22,5 +22,15 @@ class UserResponse(BaseModel):
 
 # 用户登录请求模型
 class UserLogin(BaseModel):
-    email: EmailStr
+    username: str
     password: str
+
+# 令牌响应模型
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse
+
+# 令牌数据模型
+class TokenData(BaseModel):
+    username: Optional[str] = None

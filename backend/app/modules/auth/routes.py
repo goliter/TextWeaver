@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from datetime import timedelta
 from app.modules.auth import schemas, crud
 from app.core.database import get_db
+from app.core.config import settings
+from app.modules.auth.jwt import create_access_token, get_current_active_user
 
 # 创建路由器
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -21,23 +25,78 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     
     return crud.create_user(db=db, user=user)
 
+# 用户登录
+@router.post("/login", response_model=schemas.Token)
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    # 验证用户
+    user = crud.get_user_by_username(db, username=form_data.username)
+    if not user:
+        user = crud.get_user_by_email(db, email=form_data.username)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    
+    # 验证密码
+    if not crud.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 创建访问令牌
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user
+    }
+
+# 获取当前用户信息（需要认证）
+@router.get("/me", response_model=schemas.UserResponse)
+def read_users_me(current_user: crud.models.User = Depends(get_current_active_user)):
+    return current_user
+
 # 获取所有用户
 @router.get("/users", response_model=list[schemas.UserResponse])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
     users = crud.get_users(db, skip=skip, limit=limit)
     return users
 
-# 获取单个用户
+# 获取单个用户（需要认证的示例）
 @router.get("/users/{user_id}", response_model=schemas.UserResponse)
-def read_user(user_id: int, db: Session = Depends(get_db)):
+def read_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: crud.models.User = Depends(get_current_active_user)
+):
     db_user = db.query(crud.models.User).filter(crud.models.User.id == user_id).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-#通过邮箱获取用户
+#通过邮箱获取用户（需要认证的示例）
 @router.get("/users/email/{email}", response_model=schemas.UserResponse)
-def read_user_by_email(email: str, db: Session = Depends(get_db)):
+def read_user_by_email(
+    email: str,
+    db: Session = Depends(get_db),
+    current_user: crud.models.User = Depends(get_current_active_user)
+):
     db_user = db.query(crud.models.User).filter(crud.models.User.email == email).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
