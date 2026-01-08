@@ -31,7 +31,7 @@ const Register: React.FC = () => {
 
       // 调用注册API
       await register({ username, email, password });
-      navigate("/");
+      navigate("/dashboard");
     } catch (err: any) {
       console.error("注册失败:", err);
       if (err.response?.data?.detail) {

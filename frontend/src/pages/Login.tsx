@@ -21,7 +21,7 @@ const Login: React.FC = () => {
       }
 
       await login(username, password);
-      navigate("/");
+      navigate("/dashboard");
     } catch (err: any) {
       console.error("登录失败:", err);
       if (err.response?.data?.detail) {
