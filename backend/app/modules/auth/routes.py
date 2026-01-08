@@ -83,7 +83,7 @@ def read_users(
 def read_user(
     user_id: int,
     db: Session = Depends(get_db),
-    # current_user: crud.models.User = Depends(get_current_active_user)
+    current_user: crud.models.User = Depends(get_current_active_user)
 ):
     db_user = db.query(crud.models.User).filter(crud.models.User.id == user_id).first()
     if db_user is None:
@@ -95,7 +95,7 @@ def read_user(
 def read_user_by_email(
     email: str,
     db: Session = Depends(get_db),
-    # current_user: crud.models.User = Depends(get_current_active_user)
+    current_user: crud.models.User = Depends(get_current_active_user)
 ):
     db_user = db.query(crud.models.User).filter(crud.models.User.email == email).first()
     if db_user is None:
