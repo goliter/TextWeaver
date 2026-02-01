@@ -23,10 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 创建数据库表
-@app.on_event("startup")
-def create_tables():
-    Base.metadata.create_all(bind=engine)
+
 
 # 注册API路由
 app.include_router(api_router)

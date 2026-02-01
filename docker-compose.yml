@@ -12,8 +12,6 @@ services:
     volumes:
       # 数据持久化
       - postgres_data:/var/lib/postgresql/data
-      # 初始化脚本（可选）
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U textweaver -d textweaver_dev"]
       interval: 10s
