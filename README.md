@@ -1,36 +1,42 @@
-
-
 # AI 文本工作流 MVP 架构蓝图
 
 ## 一、系统整体布局
 
 **三栏设计**：
 
-| 区域                       | 功能                                                         |
-| -------------------------- | ------------------------------------------------------------ |
+| 区域                       | 功能                                                                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | 左侧（File Explorer）      | 虚拟文件系统，显示文件夹/文件层级结构，支持创建/重命名/删除文件和文件夹，文件内容存储在数据库中（Markdown/纯文本）。 |
-| 中间（Flow Editor）        | AI 工作流可视化编辑器（React Flow），节点可拖拽、连接，可显示执行状态，节点可读取左侧文件或写入文件。 |
-| 右侧（Inspector / Editor） | 当前选中节点或文件的详细信息，支持编辑 Prompt、文件内容或节点配置。 |
+| 中间（Flow Editor）        | AI 工作流可视化编辑器（React Flow），节点可拖拽、连接，可显示执行状态，节点可读取左侧文件或写入文件。                |
+| 右侧（Inspector / Editor） | 当前选中节点或文件的详细信息，支持编辑 Prompt、文件内容或节点配置。                                                  |
 
-------
+---
 
 ## 二、核心数据结构
 
 ### 1. 虚拟文件系统（File Resource）
 
-**数据库表设计（PostgreSQL 示例）**：
+**数据库表设计**：使用 SQLAlchemy ORM 定义，通过 Alembic 迁移管理
 
-```
-CREATE TABLE files (
-    id SERIAL PRIMARY KEY,
-    parent_id INT NULL,       -- 父文件夹ID，NULL表示根目录
-    name TEXT NOT NULL,
-    type TEXT NOT NULL,       -- 'file' 或 'folder'
-    content TEXT,             -- Markdown / 文本内容
-    owner_id INT NOT NULL,    -- 用户ID
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+**模型定义示例**：
+
+```python
+# app/modules/files/models.py
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy.sql import func
+from app.core.database import Base
+
+class File(Base):
+    __tablename__ = "files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("files.id"), nullable=True)
+    name = Column(String, nullable=False)
+    type = Column(String, nullable=False)  # 'file' 或 'folder'
+    content = Column(Text, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 ```
 
 - **文件夹**：`type = folder`，`content = NULL`
@@ -38,7 +44,7 @@ CREATE TABLE files (
 - **覆盖式写入**：AI 节点写入时直接更新 `content` 字段
 - **前端展示**：树形结构 + 可拖拽连接节点
 
-------
+---
 
 ### 2. 工作流 Flow JSON Schema
 
@@ -52,7 +58,7 @@ CREATE TABLE files (
       "type": "input",
       "label": "用户输入",
       "config": {
-        "source": "manual", 
+        "source": "manual",
         "content": "初始文本内容"
       },
       "outputs": ["n2"]
@@ -94,7 +100,7 @@ CREATE TABLE files (
 - **AI 节点支持结构化 Prompt**，可以使用 `{input}` 或 `{file.content}` 占位符
 - **File Writer 节点**支持覆盖写入指定文件
 
-------
+---
 
 ### 3. 节点类型定义
 
@@ -106,7 +112,7 @@ CREATE TABLE files (
 | file_writer | 将输出写入文件           | `file_id`, `overwrite: true/false`                      |
 | output      | 显示最终结果             | 无                                                      |
 
-------
+---
 
 ## 三、后端执行模型（Flow Engine）
 
@@ -141,7 +147,7 @@ for node in topo_sorted_nodes:
     node.status = "success"
 ```
 
-------
+---
 
 ## 四、前端交互设计
 
@@ -164,7 +170,7 @@ for node in topo_sorted_nodes:
 - 可编辑节点配置 / Prompt / 文件内容
 - 保存自动更新 DB / Flow JSON
 
-------
+---
 
 ## 五、MVP 功能清单
 
@@ -177,20 +183,71 @@ for node in topo_sorted_nodes:
 7. 右侧 Inspector 可编辑节点或文件配置
 8. 流程 JSON 可存储 / 加载
 
-------
+---
 
 ## 六、技术栈推荐
 
-| 层       | 技术栈                                                    |
-| -------- | --------------------------------------------------------- |
-| 前端     | React + VIte + Tailwind + React Flow + Monaco Editor      |
-| 后端     | Python + FastAPI + PostgreSQL + Redis（缓存节点执行状态） |
-| AI       | OpenAI GPT-4o-mini                                        |
-| 数据存储 | PostgreSQL（文件 / Flow / 用户）                          |
+| 层         | 技术栈                                                    |
+| ---------- | --------------------------------------------------------- |
+| 前端       | React + VIte + Tailwind + React Flow + Monaco Editor      |
+| 后端       | Python + FastAPI + PostgreSQL + Redis（缓存节点执行状态） |
+| AI         | OpenAI GPT-4o-mini                                        |
+| 数据存储   | PostgreSQL（文件 / Flow / 用户）                          |
+| 数据库管理 | SQLAlchemy ORM + Alembic 迁移工具                         |
 
-------
+---
 
-## 七、扩展空间
+## 七、数据库迁移管理
+
+### 核心概念
+
+- **SQLAlchemy ORM**：定义数据模型，替代手写 SQL
+- **Alembic**：管理数据库结构变更，支持版本控制和回滚
+
+### 主要操作
+
+#### 1. 生成迁移（模型变更时）
+
+```bash
+cd backend
+alembic revision --autogenerate -m "迁移描述"
+```
+
+#### 2. 应用迁移
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+#### 3. 回滚迁移（如果需要）
+
+```bash
+cd backend
+alembic downgrade -1
+```
+
+#### 4. 查看迁移历史
+
+```bash
+cd backend
+alembic history
+```
+
+### 首次启动自动初始化
+
+- 本地开发：执行 `alembic upgrade head && python seed.py`
+- Docker 部署：首次启动时自动执行迁移和种子操作
+
+### 数据库结构管理
+
+- **添加新表**：创建模型文件 → 导入到 `alembic/env.py` → 生成迁移
+- **修改表结构**：修改模型文件 → 生成迁移 → 应用迁移
+- **数据填充**：使用 `seed.py` 脚本填充初始数据
+
+---
+
+## 八、扩展空间
 
 - 后续支持 File Versioning / Undo / Redo
 - 支持多用户协作 / 权限管理
@@ -198,17 +255,13 @@ for node in topo_sorted_nodes:
 - 支持远程触发 / 自动执行 / 调度
 - 支持真实磁盘或云存储文件系统替换虚拟文件系统
 
-------
+---
 
-
-
-
-
-## 八、应用领域
+## 九、应用领域
 
 完全可以的！你的 **AI 工作流平台**本质上是一个 **可视化、节点化、文件驱动的文本生成与处理系统**，小说创作只是一个应用场景。换思路，你可以把它看作一个 **“生成式文本工作流引擎”**，几乎所有文本相关的任务都能做。下面列几个方向：
 
-------
+---
 
 ## 1. 文案创作 / 内容生成
 
@@ -217,7 +270,7 @@ for node in topo_sorted_nodes:
   - 输入产品信息 → AI 节点生成标题/广告文案 → 文案优化节点 → 文件写入
 - **特点**：可以批量生成多版本文案，节点化控制风格、口吻、长度
 
-------
+---
 
 ## 2. 报告/总结生成
 
@@ -226,7 +279,7 @@ for node in topo_sorted_nodes:
   - 输入原始数据或文档 → 文件读取节点 → AI 节点生成摘要 → 文件写入
 - **特点**：支持多源文档聚合，自动生成条理清晰的报告
 
-------
+---
 
 ## 3. 教育 / 学习辅助
 
@@ -235,7 +288,7 @@ for node in topo_sorted_nodes:
   - 输入教材或知识点 → AI 节点生成练习题 → AI 节点生成答案解析 → 文件写入
 - **特点**：可按章节或主题组织，自动更新知识库
 
-------
+---
 
 ## 4. 客服 / 问答系统构建
 
@@ -245,7 +298,7 @@ for node in topo_sorted_nodes:
   - 后续可用作 chatbot 数据源
 - **特点**：可迭代优化，支持上下文更新
 
-------
+---
 
 ## 5. 翻译 / 文本风格转换
 
@@ -254,7 +307,7 @@ for node in topo_sorted_nodes:
   - 文件读取 → AI 节点翻译/改写 → 文件写入 → 后续可再次改写或检查
 - **特点**：支持多轮迭代，保证一致性和风格统一
 
-------
+---
 
 ## 6. 数据清洗 / 结构化文本生成
 
