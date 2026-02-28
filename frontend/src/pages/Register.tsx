@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 
 const Register: React.FC = () => {
@@ -12,6 +12,13 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const register = useAuthStore((state) => state.register);
 
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const token = useAuthStore((state) => state.token);
+
+  if (isAuthenticated && token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
