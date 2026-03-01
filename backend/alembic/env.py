@@ -8,6 +8,7 @@ from alembic import context
 # 导入你的模型 Base
 from app.core.database import Base
 from app.modules.auth.models import User  # 导入所有模型
+from app.modules.filesystem.models import File  # 导入文件系统模型
 
 # 导入环境变量
 import os
