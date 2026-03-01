@@ -17,6 +17,19 @@ def get_file_by_path(db: Session, path: str, user_id: int):
     ).first()
 
 
+def get_file_by_name_and_parent(db: Session, name: str, parent_id: Optional[int], user_id: int):
+    """检查同一目录下是否有同名文件/文件夹"""
+    query = db.query(models.File).filter(
+        models.File.name == name,
+        models.File.user_id == user_id
+    )
+    if parent_id is None:
+        query = query.filter(models.File.parent_id.is_(None))
+    else:
+        query = query.filter(models.File.parent_id == parent_id)
+    return query.first()
+
+
 def get_files_by_parent_id(db: Session, parent_id: Optional[int], user_id: int) -> List[models.File]:
     query = db.query(models.File).filter(models.File.user_id == user_id)
     if parent_id is None:
@@ -48,16 +61,26 @@ def create_file(db: Session, file: schemas.FileCreate, user_id: int) -> models.F
 
 
 def update_file(db: Session, file_id: int, file_update: schemas.FileUpdate, user_id: int) -> Optional[models.File]:
-    db_file = get_file_by_id(db, file_id, user_id)
+    db_file = db.query(models.File).filter(
+        models.File.id == file_id,
+        models.File.user_id == user_id
+    ).first()
+    
     if not db_file:
         return None
     
-    update_data = file_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_file, field, value)
-    
-    if "content" in update_data:
-        db_file.size = len(update_data["content"]) if update_data["content"] else 0
+    if file_update.name is not None:
+        # 检查同一目录下是否有同名文件/文件夹
+        existing_file = get_file_by_name_and_parent(
+            db, file_update.name, db_file.parent_id, user_id
+        )
+        if existing_file and existing_file.id != file_id:
+            raise ValueError(f"File or folder with name '{file_update.name}' already exists in this directory")
+        
+        db_file.name = file_update.name
+    if file_update.content is not None:
+        db_file.content = file_update.content
+        db_file.size = len(file_update.content)
     
     db.commit()
     db.refresh(db_file)
@@ -65,7 +88,11 @@ def update_file(db: Session, file_id: int, file_update: schemas.FileUpdate, user
 
 
 def delete_file(db: Session, file_id: int, user_id: int) -> bool:
-    db_file = get_file_by_id(db, file_id, user_id)
+    db_file = db.query(models.File).filter(
+        models.File.id == file_id,
+        models.File.user_id == user_id
+    ).first()
+    
     if not db_file:
         return False
     
@@ -74,7 +101,19 @@ def delete_file(db: Session, file_id: int, user_id: int) -> bool:
     return True
 
 
-def delete_files_by_parent_id(db: Session, parent_id: int, user_id: int):
-    files = get_files_by_parent_id(db, parent_id, user_id)
-    for file in files:
-        delete_file(db, file.id, user_id)
+def delete_files_by_parent_id(db: Session, parent_id: int, user_id: int) -> int:
+    """递归删除文件夹下的所有子文件/文件夹"""
+    children = db.query(models.File).filter(
+        models.File.parent_id == parent_id,
+        models.File.user_id == user_id
+    ).all()
+    
+    count = 0
+    for child in children:
+        if child.type == models.FileType.FOLDER:
+            count += delete_files_by_parent_id(db, child.id, user_id)
+        db.delete(child)
+        count += 1
+    
+    db.commit()
+    return count

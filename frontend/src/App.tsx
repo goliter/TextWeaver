@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import RunPipeline from "./pages/pipeline/RunPipeline";
 import TemplateLibrary from "./pages/pipeline/TemplateLibrary";
+import FilesystemTest from "./pages/FilesystemTest";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: "run-pipeline", element: <RunPipeline /> },
           { path: "template-library", element: <TemplateLibrary /> },
+          { path: "filesystem", element: <FilesystemTest /> },
         ],
       },
     ],

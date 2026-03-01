@@ -82,11 +82,14 @@ def create_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    existing_file = crud.get_file_by_path(db, file.path, current_user.id)
+    # 检查同一目录下是否有同名文件/文件夹
+    existing_file = crud.get_file_by_name_and_parent(
+        db, file.name, file.parent_id, current_user.id
+    )
     if existing_file:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File with this path already exists"
+            detail="File or folder with this name already exists in this directory"
         )
     
     if file.parent_id is not None:
@@ -107,13 +110,19 @@ def update_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    updated_file = crud.update_file(db, file_id, file_update, current_user.id)
-    if not updated_file:
+    try:
+        updated_file = crud.update_file(db, file_id, file_update, current_user.id)
+        if not updated_file:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
+        return updated_file
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
-    return updated_file
 
 
 @router.delete("/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
