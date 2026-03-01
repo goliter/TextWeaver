@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AuthState, UserCreate, UserResponse } from "../types/auth";
-import { authApi } from "../utils/api";
+import { authApi } from "../api";
 
 // 认证状态接口扩展，添加方法
 interface AuthStore extends AuthState {

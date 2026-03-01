@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { FileManager } from "../components/FileManager";
-import { FileViewer } from "../components/FileViewer";
+import { FileManager } from "../components/filesystem/FileManager";
+import { FileViewer } from "../components/filesystem/FileViewer";
 import { useFilesystemStore } from "../store/filesystemStore";
 import type { FileResponse } from "../types/filesystem";
 
@@ -15,7 +15,7 @@ const FilesystemTest: React.FC = () => {
   return (
     <div className="h-[calc(100vh-64px)] flex bg-gray-900">
       {/* 左侧文件管理器 */}
-      <div className="w-64 flex-shrink-0 border-r border-gray-700">
+      <div className="w-64 shrink-0 border-r border-gray-700">
         <FileManager
           onFileSelect={setSelectedFile}
           selectedFile={selectedFile}

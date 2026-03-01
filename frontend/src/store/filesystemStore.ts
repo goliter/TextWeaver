@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { FileResponse, FileCreate, FileUpdate } from "../types/filesystem";
-import { filesystemApi } from "../utils/api";
+import { filesystemApi } from "../api";
 
 interface FilesystemState {
   files: FileResponse[];
