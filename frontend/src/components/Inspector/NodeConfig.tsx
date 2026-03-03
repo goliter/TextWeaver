@@ -3,9 +3,14 @@ import React from "react";
 interface NodeConfigProps {
   node: any;
   onNodeUpdate: (data: any) => void;
+  onDeleteNode: (nodeId: string) => void;
 }
 
-const NodeConfig: React.FC<NodeConfigProps> = ({ node, onNodeUpdate }) => {
+const NodeConfig: React.FC<NodeConfigProps> = ({
+  node,
+  onNodeUpdate,
+  onDeleteNode,
+}) => {
   if (!node) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -195,6 +200,16 @@ const NodeConfig: React.FC<NodeConfigProps> = ({ node, onNodeUpdate }) => {
           </div>
         </div>
       )}
+
+      {/* 删除节点按钮 */}
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        <button
+          onClick={() => onDeleteNode(node.id)}
+          className="w-full px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+        >
+          删除节点
+        </button>
+      </div>
     </div>
   );
 };
