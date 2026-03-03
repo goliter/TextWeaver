@@ -1,9 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-
 const Dashboard: React.FC = () => {
-
   return (
     <div className="space-y-6 p-6">
       <h1 className="text-3xl font-bold text-gray-900">仪表板</h1>
@@ -39,7 +37,7 @@ const Dashboard: React.FC = () => {
 
         {/* 工作流卡片 */}
         <Link
-          to="/dashboard/run-pipeline"
+          to="/dashboard/workflows"
           className="block p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 hover:border-indigo-300"
         >
           <div className="flex items-center space-x-4">
@@ -59,10 +57,8 @@ const Dashboard: React.FC = () => {
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                运行工作流
-              </h2>
-              <p className="text-gray-500 mt-1">执行 AI 文本处理工作流</p>
+              <h2 className="text-xl font-semibold text-gray-900">工作流</h2>
+              <p className="text-gray-500 mt-1">管理 AI 文本处理工作流</p>
             </div>
           </div>
         </Link>

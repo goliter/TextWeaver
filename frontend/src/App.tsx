@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import RunPipeline from "./pages/pipeline/RunPipeline";
 import TemplateLibrary from "./pages/pipeline/TemplateLibrary";
 import FilesystemTest from "./pages/FilesystemTest";
+import WorkflowList from "./pages/WorkflowList";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 
@@ -23,6 +24,8 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
           { index: true, element: <Dashboard /> },
+          { path: "workflows", element: <WorkflowList /> },
+          { path: "workflows/:workflowId", element: <div>工作流详情页面（待实现）</div> },
           { path: "run-pipeline", element: <RunPipeline /> },
           { path: "template-library", element: <TemplateLibrary /> },
           { path: "filesystem", element: <FilesystemTest /> },
