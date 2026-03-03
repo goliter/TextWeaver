@@ -8,14 +8,21 @@ interface AINodeProps {
   executionStatus?: string;
 }
 
-const AINode: React.FC<AINodeProps> = ({ data, isSelected, onDataChange, executionStatus }) => {
+const AINode: React.FC<AINodeProps> = ({
+  data,
+  isSelected,
+  onDataChange,
+  executionStatus,
+}) => {
   return (
     <div
       className={`w-72 p-4 rounded-lg shadow-md ${isSelected ? "bg-purple-100 border-2 border-purple-500" : "bg-white border border-gray-200"}`}
     >
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-semibold text-gray-900">AI 节点</h3>
-        <div className={`w-3 h-3 rounded-full ${executionStatus === "running" ? "bg-yellow-500 animate-pulse" : executionStatus === "completed" ? "bg-green-500" : executionStatus === "failed" ? "bg-red-500" : "bg-purple-500"}`}></div>
+        <div
+          className={`w-3 h-3 rounded-full ${executionStatus === "running" ? "bg-yellow-500 animate-pulse" : executionStatus === "completed" ? "bg-green-500" : executionStatus === "failed" ? "bg-red-500" : "bg-purple-500"}`}
+        ></div>
       </div>
       <p className="text-sm text-gray-500 mb-3">使用 AI 模型处理数据</p>
       <div className="space-y-2">
@@ -46,8 +53,8 @@ const AINode: React.FC<AINodeProps> = ({ data, isSelected, onDataChange, executi
           />
         </div>
       </div>
-      <Handle type="target" position={Position.Left} id="input" />
-      <Handle type="source" position={Position.Right} id="output" />
+      <Handle type="target" position={Position.Top} id="input" />
+      <Handle type="source" position={Position.Bottom} id="output" />
     </div>
   );
 };

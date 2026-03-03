@@ -26,13 +26,13 @@ const WorkflowDetail: React.FC = () => {
     {
       id: "n1",
       type: "input",
-      position: { x: 100, y: 200 },
+      position: { x: 200, y: 50 },
       data: { label: "输入节点", name: "input", type: "text" },
     },
     {
       id: "n2",
       type: "ai",
-      position: { x: 350, y: 200 },
+      position: { x: 200, y: 250 },
       data: {
         label: "AI 节点",
         model: "gpt-3.5-turbo",
@@ -42,7 +42,7 @@ const WorkflowDetail: React.FC = () => {
     {
       id: "n3",
       type: "output",
-      position: { x: 600, y: 200 },
+      position: { x: 200, y: 450 },
       data: { label: "输出节点", name: "output", type: "text" },
     },
   ]);

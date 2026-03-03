@@ -7,7 +7,11 @@ interface OutputNodeProps {
   onDataChange: (data: any) => void;
 }
 
-const OutputNode: React.FC<OutputNodeProps> = ({ data, isSelected, onDataChange }) => {
+const OutputNode: React.FC<OutputNodeProps> = ({
+  data,
+  isSelected,
+  onDataChange,
+}) => {
   return (
     <div
       className={`w-64 p-4 rounded-lg shadow-md ${isSelected ? "bg-green-100 border-2 border-green-500" : "bg-white border border-gray-200"}`}
@@ -45,7 +49,7 @@ const OutputNode: React.FC<OutputNodeProps> = ({ data, isSelected, onDataChange 
           </select>
         </div>
       </div>
-      <Handle type="target" position={Position.Left} id="input" />
+      <Handle type="target" position={Position.Top} id="input" />
     </div>
   );
 };

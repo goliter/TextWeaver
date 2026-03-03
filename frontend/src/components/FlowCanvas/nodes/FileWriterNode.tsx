@@ -7,7 +7,11 @@ interface FileWriterNodeProps {
   onDataChange: (data: any) => void;
 }
 
-const FileWriterNode: React.FC<FileWriterNodeProps> = ({ data, isSelected, onDataChange }) => {
+const FileWriterNode: React.FC<FileWriterNodeProps> = ({
+  data,
+  isSelected,
+  onDataChange,
+}) => {
   return (
     <div
       className={`w-64 p-4 rounded-lg shadow-md ${isSelected ? "bg-orange-100 border-2 border-orange-500" : "bg-white border border-gray-200"}`}
@@ -25,7 +29,9 @@ const FileWriterNode: React.FC<FileWriterNodeProps> = ({ data, isSelected, onDat
           <input
             type="text"
             value={data.filePath || ""}
-            onChange={(e) => onDataChange({ ...data, filePath: e.target.value })}
+            onChange={(e) =>
+              onDataChange({ ...data, filePath: e.target.value })
+            }
             placeholder="输入文件路径..."
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
           />
@@ -36,7 +42,9 @@ const FileWriterNode: React.FC<FileWriterNodeProps> = ({ data, isSelected, onDat
           </label>
           <select
             value={data.encoding || "utf-8"}
-            onChange={(e) => onDataChange({ ...data, encoding: e.target.value })}
+            onChange={(e) =>
+              onDataChange({ ...data, encoding: e.target.value })
+            }
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
           >
             <option value="utf-8">UTF-8</option>
@@ -49,14 +57,16 @@ const FileWriterNode: React.FC<FileWriterNodeProps> = ({ data, isSelected, onDat
             <input
               type="checkbox"
               checked={data.overwrite || false}
-              onChange={(e) => onDataChange({ ...data, overwrite: e.target.checked })}
+              onChange={(e) =>
+                onDataChange({ ...data, overwrite: e.target.checked })
+              }
               className="mr-1"
             />
             覆盖现有文件
           </label>
         </div>
       </div>
-      <Handle type="target" position={Position.Left} id="input" />
+      <Handle type="target" position={Position.Top} id="input" />
     </div>
   );
 };

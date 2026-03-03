@@ -7,7 +7,11 @@ interface InputNodeProps {
   onDataChange: (data: any) => void;
 }
 
-const InputNode: React.FC<InputNodeProps> = ({ data, isSelected, onDataChange }) => {
+const InputNode: React.FC<InputNodeProps> = ({
+  data,
+  isSelected,
+  onDataChange,
+}) => {
   return (
     <div
       className={`w-64 p-4 rounded-lg shadow-md ${isSelected ? "bg-indigo-100 border-2 border-indigo-500" : "bg-white border border-gray-200"}`}
@@ -45,7 +49,7 @@ const InputNode: React.FC<InputNodeProps> = ({ data, isSelected, onDataChange })
           </select>
         </div>
       </div>
-      <Handle type="source" position={Position.Right} id="output" />
+      <Handle type="source" position={Position.Bottom} id="output" />
     </div>
   );
 };

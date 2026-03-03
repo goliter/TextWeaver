@@ -7,7 +7,11 @@ interface FileReaderNodeProps {
   onDataChange: (data: any) => void;
 }
 
-const FileReaderNode: React.FC<FileReaderNodeProps> = ({ data, isSelected, onDataChange }) => {
+const FileReaderNode: React.FC<FileReaderNodeProps> = ({
+  data,
+  isSelected,
+  onDataChange,
+}) => {
   return (
     <div
       className={`w-64 p-4 rounded-lg shadow-md ${isSelected ? "bg-blue-100 border-2 border-blue-500" : "bg-white border border-gray-200"}`}
@@ -25,7 +29,9 @@ const FileReaderNode: React.FC<FileReaderNodeProps> = ({ data, isSelected, onDat
           <input
             type="text"
             value={data.filePath || ""}
-            onChange={(e) => onDataChange({ ...data, filePath: e.target.value })}
+            onChange={(e) =>
+              onDataChange({ ...data, filePath: e.target.value })
+            }
             placeholder="输入文件路径..."
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
           />
@@ -36,7 +42,9 @@ const FileReaderNode: React.FC<FileReaderNodeProps> = ({ data, isSelected, onDat
           </label>
           <select
             value={data.encoding || "utf-8"}
-            onChange={(e) => onDataChange({ ...data, encoding: e.target.value })}
+            onChange={(e) =>
+              onDataChange({ ...data, encoding: e.target.value })
+            }
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
           >
             <option value="utf-8">UTF-8</option>
@@ -45,7 +53,7 @@ const FileReaderNode: React.FC<FileReaderNodeProps> = ({ data, isSelected, onDat
           </select>
         </div>
       </div>
-      <Handle type="source" position={Position.Right} id="output" />
+      <Handle type="source" position={Position.Bottom} id="output" />
     </div>
   );
 };
