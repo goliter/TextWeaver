@@ -198,6 +198,13 @@ def delete_node(db: Session, node_id: int, flow_id: int, user_id: int) -> bool:
     if not db_node:
         return False
     
+    # 先删除所有与该节点相关的边
+    db.query(models.Edge).filter(
+        (models.Edge.source_node_id == node_id) | 
+        (models.Edge.target_node_id == node_id)
+    ).delete(synchronize_session=False)
+    
+    # 然后删除节点
     db.delete(db_node)
     db.commit()
     return True

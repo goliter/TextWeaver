@@ -5,6 +5,8 @@ import Inspector from "@/components/Inspector";
 import NodeConfig from "@/components/Inspector/NodeConfig";
 import FlowConfig from "@/components/Inspector/FlowConfig";
 import ExecutionStatus from "@/components/Inspector/ExecutionStatus";
+import { NodeTypeSelector } from "@/components/workflow/NodeTypeSelector";
+import { ConfirmDialog } from "@/components/common";
 import { workflowApi } from "@/api/workflow";
 
 const WorkflowDetail: React.FC = () => {
@@ -36,6 +38,20 @@ const WorkflowDetail: React.FC = () => {
   }>({ x: 0, y: 0 });
   const [newNodeType, setNewNodeType] = useState<string>("input");
 
+  // 确认框状态
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    danger?: boolean;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
   const handleBack = () => {
     navigate("/dashboard/workflows");
   };
@@ -62,8 +78,8 @@ const WorkflowDetail: React.FC = () => {
             ...node,
             id: node.id.toString(),
             position: {
-              x: node.position_x,
-              y: node.position_y,
+              x: node.position?.x ?? 0,
+              y: node.position?.y ?? 0,
             },
           })),
         );
@@ -74,8 +90,10 @@ const WorkflowDetail: React.FC = () => {
           edgesData.map((edge: any) => ({
             ...edge,
             id: edge.id.toString(),
-            source: edge.source.toString(),
-            target: edge.target.toString(),
+            source:
+              edge.source_node_id?.toString() ?? edge.source?.toString() ?? "",
+            target:
+              edge.target_node_id?.toString() ?? edge.target?.toString() ?? "",
           })),
         );
       } catch (err) {
@@ -200,8 +218,8 @@ const WorkflowDetail: React.FC = () => {
           ...newNode,
           id: newNode.id.toString(),
           position: {
-            x: newNode.position.x,
-            y: newNode.position.y,
+            x: newNode.position?.x ?? 0,
+            y: newNode.position?.y ?? 0,
           },
         },
       ]);
@@ -230,19 +248,104 @@ const WorkflowDetail: React.FC = () => {
     }
   };
 
-  const handleDeleteNode = async (nodeId: string) => {
-    if (!workflowId || !window.confirm("确定要删除这个节点吗？")) return;
+  const handleDeleteNode = (nodeId: string) => {
+    if (!workflowId) return;
+
+    const node = nodes.find((n) => n.id === nodeId);
+    setConfirmDialog({
+      isOpen: true,
+      title: "删除节点",
+      message: `确定要删除节点 "${node?.data?.label || node?.name || "未命名节点"}" 吗？相关的连接也会被删除。`,
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await workflowApi.deleteNode(parseInt(workflowId), parseInt(nodeId));
+          setNodes((prev) => prev.filter((node) => node.id !== nodeId));
+          setEdges((prev) =>
+            prev.filter(
+              (edge) => edge.source !== nodeId && edge.target !== nodeId,
+            ),
+          );
+          setSelectedNodeId(null);
+        } catch (err) {
+          console.error("Failed to delete node:", err);
+          alert("删除节点失败");
+        }
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  const handleEdgeConnect = async (source: string, target: string) => {
+    if (!workflowId) return;
 
     try {
-      await workflowApi.deleteNode(parseInt(workflowId), parseInt(nodeId));
-      setNodes((prev) => prev.filter((node) => node.id !== nodeId));
-      setEdges((prev) =>
-        prev.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
+      const edgeData = {
+        source_node_id: parseInt(source),
+        target_node_id: parseInt(target),
+      };
+      const newEdge = await workflowApi.createEdge(
+        parseInt(workflowId),
+        edgeData,
       );
-      setSelectedNodeId(null);
+      // 将新边的ID添加到本地状态
+      setEdges((prev) => [
+        ...prev,
+        {
+          ...newEdge,
+          id: newEdge.id.toString(),
+          source: newEdge.source_node_id.toString(),
+          target: newEdge.target_node_id.toString(),
+        },
+      ]);
     } catch (err) {
-      console.error("Failed to delete node:", err);
-      alert("删除节点失败");
+      console.error("Failed to create edge:", err);
+      alert("创建连接失败");
+      throw err;
+    }
+  };
+
+  const handleEdgeDelete = async (edgeId: string) => {
+    if (!workflowId) return;
+
+    return new Promise<void>((resolve) => {
+      setConfirmDialog({
+        isOpen: true,
+        title: "删除连接",
+        message: "确定要删除这条连接吗？",
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await workflowApi.deleteEdge(
+              parseInt(workflowId),
+              parseInt(edgeId),
+            );
+            setEdges((prev) => prev.filter((edge) => edge.id !== edgeId));
+          } catch (err) {
+            console.error("Failed to delete edge:", err);
+            alert("删除连接失败");
+          }
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+          resolve();
+        },
+      });
+    });
+  };
+
+  // 保存节点位置
+  const handleNodeDragStop = async (
+    nodeId: string,
+    position: { x: number; y: number },
+  ) => {
+    if (!workflowId) return;
+
+    try {
+      await workflowApi.updateNode(parseInt(workflowId), parseInt(nodeId), {
+        position: position,
+      });
+    } catch (err) {
+      console.error("Failed to save node position:", err);
+      throw err;
     }
   };
 
@@ -306,6 +409,9 @@ const WorkflowDetail: React.FC = () => {
                 onEdgesChange={handleEdgesChange}
                 onNodeSelect={handleNodeSelect}
                 onAddNode={handleAddNode}
+                onEdgeConnect={handleEdgeConnect}
+                onEdgeDelete={handleEdgeDelete}
+                onNodeDragStop={handleNodeDragStop}
               />
             )}
           </div>
@@ -336,46 +442,27 @@ const WorkflowDetail: React.FC = () => {
         </Inspector>
       </main>
 
-      {/* 添加节点弹窗 */}
-      {showAddNodeDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-80">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              新建节点
-            </h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                节点类型
-              </label>
-              <select
-                value={newNodeType}
-                onChange={(e) => setNewNodeType(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="input">输入节点</option>
-                <option value="ai">AI 节点</option>
-                <option value="output">输出节点</option>
-                <option value="fileReader">文件读取节点</option>
-                <option value="fileWriter">文件写入节点</option>
-              </select>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowAddNodeDialog(false)}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleCreateNode}
-                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              >
-                创建
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 节点选择器弹窗 */}
+      <NodeTypeSelector
+        isOpen={showAddNodeDialog}
+        onSelect={(type) => {
+          setNewNodeType(type);
+          handleCreateNode();
+        }}
+        onCancel={() => setShowAddNodeDialog(false)}
+      />
+
+      {/* 确认框 */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        danger={confirmDialog.danger}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
+      />
     </div>
   );
 };

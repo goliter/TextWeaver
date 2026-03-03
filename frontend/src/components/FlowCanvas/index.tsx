@@ -7,6 +7,7 @@ import {
   Background,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { ContextMenu, type MenuItem } from "@/components/common";
 
 interface FlowCanvasProps {
   flowId: number;
@@ -16,7 +17,15 @@ interface FlowCanvasProps {
   onEdgesChange: (edges: any[]) => void;
   onNodeSelect: (nodeId: string) => void;
   onAddNode: (position: { x: number; y: number }) => void;
+  onEdgeConnect: (source: string, target: string) => Promise<void>;
+  onEdgeDelete: (edgeId: string) => Promise<void>;
+  onNodeDragStop?: (
+    nodeId: string,
+    position: { x: number; y: number },
+  ) => Promise<void>;
 }
+
+type ContextMenuType = "canvas" | "edge" | null;
 
 const FlowCanvas: React.FC<FlowCanvasProps> = ({
   flowId,
@@ -26,11 +35,16 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   onEdgesChange,
   onNodeSelect,
   onAddNode,
+  onEdgeConnect,
+  onEdgeDelete,
+  onNodeDragStop,
 }) => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
+    type: ContextMenuType;
+    edgeId?: string;
   } | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
@@ -42,20 +56,37 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     [nodes, onNodesChange],
   );
 
+  const handleConnect = useCallback(
+    async (params: any) => {
+      if (onEdgeConnect) {
+        try {
+          await onEdgeConnect(params.source, params.target);
+        } catch (err) {
+          console.error("Failed to create edge:", err);
+        }
+      }
+    },
+    [onEdgeConnect],
+  );
+
   const handleEdgesChange = useCallback(
-    (changes: any[]) => {
+    async (changes: any[]) => {
+      const removeChanges = changes.filter(
+        (change) => change.type === "remove",
+      );
+      for (const change of removeChanges) {
+        if (onEdgeDelete && change.id) {
+          try {
+            await onEdgeDelete(change.id);
+          } catch (err) {
+            console.error("Failed to delete edge:", err);
+          }
+        }
+      }
       const newEdges = applyEdgeChanges(changes, edges);
       onEdgesChange(newEdges);
     },
-    [edges, onEdgesChange],
-  );
-
-  const handleConnect = useCallback(
-    (params: any) => {
-      const newEdges = addEdge(params, edges);
-      onEdgesChange(newEdges);
-    },
-    [edges, onEdgesChange],
+    [edges, onEdgesChange, onEdgeDelete],
   );
 
   const handleNodeClick = useCallback(
@@ -67,33 +98,119 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     [onNodeSelect],
   );
 
-  const handleContextMenu = useCallback((event: any) => {
+  // 节点拖拽停止
+  const handleNodeDragStop = useCallback(
+    async (event: any, node: any) => {
+      if (onNodeDragStop) {
+        try {
+          await onNodeDragStop(node.id, node.position);
+        } catch (err) {
+          console.error("Failed to save node position:", err);
+        }
+      }
+    },
+    [onNodeDragStop],
+  );
+
+  // 画布右键菜单
+  const handlePaneContextMenu = useCallback((event: any) => {
     event.preventDefault();
     if (reactFlowWrapper.current) {
       const rect = reactFlowWrapper.current.getBoundingClientRect();
       setContextMenu({
         x: event.clientX - rect.left,
         y: event.clientY - rect.top,
+        type: "canvas",
       });
     }
   }, []);
 
-  const handleCreateNode = useCallback(
-    (type: string) => {
-      if (contextMenu && onAddNode) {
-        onAddNode({ x: contextMenu.x - 100, y: contextMenu.y - 50 });
-        setContextMenu(null);
-      }
-    },
-    [contextMenu, onAddNode],
-  );
+  // 边的右键菜单
+  const handleEdgeContextMenu = useCallback((event: any, edge: any) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (reactFlowWrapper.current) {
+      const rect = reactFlowWrapper.current.getBoundingClientRect();
+      setContextMenu({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+        type: "edge",
+        edgeId: edge.id,
+      });
+    }
+  }, []);
 
-  const handleClick = useCallback(() => {
+  const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
 
+  const handleAddNodeClick = useCallback(() => {
+    if (contextMenu && onAddNode) {
+      onAddNode({ x: contextMenu.x - 100, y: contextMenu.y - 50 });
+      setContextMenu(null);
+    }
+  }, [contextMenu, onAddNode]);
+
+  const handleDeleteEdgeClick = useCallback(() => {
+    if (contextMenu?.edgeId && onEdgeDelete) {
+      onEdgeDelete(contextMenu.edgeId);
+      setContextMenu(null);
+    }
+  }, [contextMenu, onEdgeDelete]);
+
+  // 画布右键菜单项
+  const canvasMenuItems: MenuItem[] = [
+    {
+      label: "添加节点",
+      onClick: handleAddNodeClick,
+      icon: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 4v16m8-8H4"
+          />
+        </svg>
+      ),
+    },
+  ];
+
+  // 边右键菜单项
+  const edgeMenuItems: MenuItem[] = [
+    {
+      label: "删除连接",
+      onClick: handleDeleteEdgeClick,
+      danger: true,
+      icon: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+          />
+        </svg>
+      ),
+    },
+  ];
+
   return (
-    <div className="w-full h-full" ref={reactFlowWrapper} onClick={handleClick}>
+    <div
+      className="w-full h-full"
+      ref={reactFlowWrapper}
+      onClick={handleCloseContextMenu}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -101,8 +218,10 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
-        onPaneClick={handleClick}
-        onPaneContextMenu={handleContextMenu}
+        onNodeDragStop={handleNodeDragStop}
+        onEdgeContextMenu={handleEdgeContextMenu}
+        onPaneClick={handleCloseContextMenu}
+        onPaneContextMenu={handlePaneContextMenu}
         fitView
         minZoom={0.5}
         maxZoom={2}
@@ -111,48 +230,24 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       </ReactFlow>
 
       {/* 右键菜单 */}
-      {contextMenu && (
-        <div
-          className="absolute z-50 bg-white rounded-md shadow-lg p-2 border border-gray-200"
-          style={{
-            left: `${contextMenu.x}px`,
-            top: `${contextMenu.y}px`,
-          }}
-        >
-          <div className="font-medium text-sm text-gray-700 mb-1 px-2">
-            新建节点
-          </div>
-          <button
-            className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
-            onClick={() => handleCreateNode("input")}
-          >
-            输入节点
-          </button>
-          <button
-            className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
-            onClick={() => handleCreateNode("ai")}
-          >
-            AI 节点
-          </button>
-          <button
-            className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
-            onClick={() => handleCreateNode("output")}
-          >
-            输出节点
-          </button>
-          <button
-            className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
-            onClick={() => handleCreateNode("fileReader")}
-          >
-            文件读取节点
-          </button>
-          <button
-            className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
-            onClick={() => handleCreateNode("fileWriter")}
-          >
-            文件写入节点
-          </button>
-        </div>
+      {contextMenu && contextMenu.type === "canvas" && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          title="工作流操作"
+          items={canvasMenuItems}
+          onClose={handleCloseContextMenu}
+        />
+      )}
+
+      {contextMenu && contextMenu.type === "edge" && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          title="连接操作"
+          items={edgeMenuItems}
+          onClose={handleCloseContextMenu}
+        />
       )}
     </div>
   );
