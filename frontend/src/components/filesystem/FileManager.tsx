@@ -30,7 +30,19 @@ function FileTreeItem({
   const isExpanded = expandedFolders.has(file.id);
   const isSelected = selectedFileId === file.id;
 
-  const children = allFiles.filter((f) => f.parent_id === file.id);
+  const children = allFiles
+    .filter((f) => f.parent_id === file.id)
+    .sort((a, b) => {
+      // 文件夹排在文件前面
+      if (a.type === FileType.FOLDER && b.type !== FileType.FOLDER) {
+        return -1;
+      }
+      if (a.type !== FileType.FOLDER && b.type === FileType.FOLDER) {
+        return 1;
+      }
+      // 同类型按名称字母排序
+      return a.name.localeCompare(b.name);
+    });
 
   const handleClick = () => {
     if (isFolder) {
@@ -336,7 +348,19 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
     setDeleteFileId(null);
   };
 
-  const rootFiles = files.filter((f) => f.parent_id === null);
+  const rootFiles = files
+    .filter((f) => f.parent_id === null)
+    .sort((a, b) => {
+      // 文件夹排在文件前面
+      if (a.type === FileType.FOLDER && b.type !== FileType.FOLDER) {
+        return -1;
+      }
+      if (a.type !== FileType.FOLDER && b.type === FileType.FOLDER) {
+        return 1;
+      }
+      // 同类型按名称字母排序
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="h-full flex flex-col bg-gray-800 text-gray-300 relative">
