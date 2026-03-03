@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useFilesystemStore } from "../store/filesystemStore";
-import type { FileResponse } from "../types/filesystem";
-import { FileType } from "../types/filesystem";
+import { useFilesystemStore } from "@/store/filesystemStore";
+import type { FileResponse } from "@/types/filesystem";
+import { FileType } from "@/types/filesystem";
 
 interface FileTreeItemProps {
   file: FileResponse;

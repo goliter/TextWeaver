@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 //import { useFilesystemStore } from "../store/filesystemStore";
-import type { FileResponse } from "../types/filesystem";
+import type { FileResponse } from "@/types/filesystem";
 
 interface FileEditorProps {
   file: FileResponse;

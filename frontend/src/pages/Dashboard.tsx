@@ -1,9 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
-//import { useAuthStore } from "../store/authStore";
+
 
 const Dashboard: React.FC = () => {
-  //const user = useAuthStore((state) => state.user);
 
   return (
     <div className="space-y-6 p-6">

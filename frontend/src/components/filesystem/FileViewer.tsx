@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useCallback, useEffect } from "react";
-import type { FileResponse } from "../types/filesystem";
+import type { FileResponse } from "@/types/filesystem";
 
 interface FileViewerProps {
   file: FileResponse | null;

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore } from "@/store/authStore";
 
 const Layout: React.FC = () => {
   const location = useLocation();
