@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { FileManager } from "../components/filesystem/FileManager";
-import { FileViewer } from "../components/filesystem/FileViewer";
-import { useFilesystemStore } from "../store/filesystemStore";
-import type { FileResponse } from "../types/filesystem";
+import { FileManager } from "@/components/filesystem/FileManager";
+import { FileViewer } from "@/components/filesystem/FileViewer";
+import { useFilesystemStore } from "@/store/filesystemStore";
+import type { FileResponse } from "@/types/filesystem";
 
 const FilesystemTest: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<FileResponse | null>(null);
