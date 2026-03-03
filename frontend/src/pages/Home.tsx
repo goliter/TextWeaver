@@ -15,7 +15,7 @@ const Home: React.FC = () => {
       {/* 主内容区 */}
       <div className="max-w-4xl w-full text-center">
         {/* 网站名称 */}
-        <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-linear-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
           Textweave
         </h1>
 
@@ -44,7 +44,7 @@ const Home: React.FC = () => {
           </Link>
           <Link
             to="/register"
-            className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 font-semibold"
+            className="px-6 py-3 rounded-full bg-linear-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 font-semibold"
           >
             注册
           </Link>
