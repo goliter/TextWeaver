@@ -25,10 +25,24 @@ function FileTreeItem({
   onDelete,
   onContextMenu,
   allFiles,
-}: FileTreeItemProps) {
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  draggedFile,
+  dragOverFolder,
+}: FileTreeItemProps & {
+  onDragStart: (file: FileResponse) => void;
+  onDragOver: (folderId: number) => void;
+  onDragLeave: () => void;
+  onDrop: (folderId: number, draggedFile: FileResponse) => void;
+  draggedFile: FileResponse | null;
+  dragOverFolder: number | null;
+}) {
   const isFolder = file.type === FileType.FOLDER;
   const isExpanded = expandedFolders.has(file.id);
   const isSelected = selectedFileId === file.id;
+  const isDragOver = isFolder && dragOverFolder === file.id;
 
   const children = allFiles
     .filter((f) => f.parent_id === file.id)
@@ -57,15 +71,47 @@ function FileTreeItem({
     onContextMenu(e, file);
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", file.id.toString());
+    onDragStart(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isFolder) return;
+    if (draggedFile?.id === file.id) return;
+    if (draggedFile?.parent_id === file.id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    onDragOver(file.id);
+  };
+
+  const handleDragLeave = () => {
+    onDragLeave();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!isFolder || !draggedFile) return;
+    onDrop(file.id, draggedFile);
+  };
+
   return (
     <div>
       <div
         onClick={handleClick}
         onContextMenu={handleContextMenu}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        draggable={true}
         className={`flex items-center py-1 px-2 cursor-pointer select-none group ${
           isSelected
             ? "bg-blue-600 text-white"
-            : "hover:bg-gray-700 text-gray-300"
+            : isDragOver
+              ? "bg-blue-900/50 text-blue-300"
+              : "hover:bg-gray-700 text-gray-300"
         }`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
@@ -151,6 +197,12 @@ function FileTreeItem({
               onDelete={onDelete}
               onContextMenu={onContextMenu}
               allFiles={allFiles}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              draggedFile={draggedFile}
+              dragOverFolder={dragOverFolder}
             />
           ))}
         </div>
@@ -193,6 +245,17 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteFileId, setDeleteFileId] = useState<number | null>(null);
   const [deleteIsFolder, setDeleteIsFolder] = useState(false);
+
+  // 拖拽相关状态
+  const [draggedFile, setDraggedFile] = useState<FileResponse | null>(null);
+  const [dragOverFolder, setDragOverFolder] = useState<number | null>(null);
+  const [showMoveConfirmModal, setShowMoveConfirmModal] = useState(false);
+  const [moveSourceFile, setMoveSourceFile] = useState<FileResponse | null>(
+    null,
+  );
+  const [moveTargetFolderId, setMoveTargetFolderId] = useState<number | null>(
+    null,
+  );
 
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState<{
@@ -348,6 +411,50 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
     setDeleteFileId(null);
   };
 
+  // 拖拽相关处理函数
+  const handleDragStart = (file: FileResponse) => {
+    setDraggedFile(file);
+    setContextMenu(null);
+  };
+
+  const handleDragOver = (folderId: number) => {
+    setDragOverFolder(folderId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverFolder(null);
+  };
+
+  const handleDrop = (folderId: number, draggedFile: FileResponse) => {
+    setDragOverFolder(null);
+    setMoveSourceFile(draggedFile);
+    setMoveTargetFolderId(folderId);
+    setShowMoveConfirmModal(true);
+  };
+
+  const handleMoveConfirm = async () => {
+    if (!moveSourceFile || !moveTargetFolderId) return;
+
+    try {
+      await updateFile(moveSourceFile.id, {
+        parent_id: moveTargetFolderId,
+      });
+      setShowMoveConfirmModal(false);
+      setMoveSourceFile(null);
+      setMoveTargetFolderId(null);
+      setDraggedFile(null);
+    } catch (err: any) {
+      console.error("移动失败:", err);
+    }
+  };
+
+  const handleMoveCancel = () => {
+    setShowMoveConfirmModal(false);
+    setMoveSourceFile(null);
+    setMoveTargetFolderId(null);
+    setDraggedFile(null);
+  };
+
   const rootFiles = files
     .filter((f) => f.parent_id === null)
     .sort((a, b) => {
@@ -435,6 +542,12 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
               onDelete={handleDelete}
               onContextMenu={handleContextMenu}
               allFiles={files}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              draggedFile={draggedFile}
+              dragOverFolder={dragOverFolder}
             />
           ))
         )}
@@ -663,6 +776,38 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-red-800 disabled:opacity-50 transition-colors"
               >
                 {loading ? "删除中..." : "删除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 移动确认弹窗 */}
+      {showMoveConfirmModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.2)" }}
+        >
+          <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-md mx-4 p-6 border border-gray-700">
+            <h3 className="text-lg font-bold text-white mb-4">确认移动</h3>
+
+            <p className="text-gray-300 mb-6">
+              确定要将 "{moveSourceFile?.name}" 移动到目标文件夹吗？
+            </p>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleMoveCancel}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleMoveConfirm}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 transition-colors"
+              >
+                {loading ? "移动中..." : "移动"}
               </button>
             </div>
           </div>

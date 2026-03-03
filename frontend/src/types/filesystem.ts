@@ -17,6 +17,7 @@ export interface FileCreate extends FileBase {
 export interface FileUpdate {
   name?: string;
   content?: string;
+  parent_id?: number;
 }
 
 export interface FileResponse {

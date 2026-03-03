@@ -23,6 +23,7 @@ class FileCreate(FileBase):
 class FileUpdate(BaseModel):
     name: Optional[str] = None
     content: Optional[str] = None
+    parent_id: Optional[int] = None
 
 
 class FileResponse(BaseModel):

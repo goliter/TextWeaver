@@ -72,15 +72,50 @@ def update_file(db: Session, file_id: int, file_update: schemas.FileUpdate, user
     if file_update.name is not None:
         # 检查同一目录下是否有同名文件/文件夹
         existing_file = get_file_by_name_and_parent(
-            db, file_update.name, db_file.parent_id, user_id
+            db, file_update.name, file_update.parent_id if file_update.parent_id is not None else db_file.parent_id, user_id
         )
         if existing_file and existing_file.id != file_id:
             raise ValueError(f"File or folder with name '{file_update.name}' already exists in this directory")
         
         db_file.name = file_update.name
+    
     if file_update.content is not None:
         db_file.content = file_update.content
         db_file.size = len(file_update.content)
+    
+    if file_update.parent_id is not None:
+        # 检查目标文件夹是否存在
+        target_folder = db.query(models.File).filter(
+            models.File.id == file_update.parent_id,
+            models.File.user_id == user_id,
+            models.File.type == models.FileType.FOLDER
+        ).first()
+        
+        if not target_folder:
+            raise ValueError("Target folder does not exist")
+        
+        # 检查是否会导致循环依赖
+        if file_update.parent_id == file_id:
+            raise ValueError("Cannot move a file/folder into itself")
+        
+        # 检查目标文件夹是否是当前文件的子文件夹
+        current_file = target_folder
+        while current_file.parent_id is not None:
+            if current_file.parent_id == file_id:
+                raise ValueError("Cannot move a file/folder into its own subfolder")
+            current_file = db.query(models.File).filter(
+                models.File.id == current_file.parent_id,
+                models.File.user_id == user_id
+            ).first()
+        
+        # 检查目标文件夹中是否有同名文件/文件夹
+        existing_file = get_file_by_name_and_parent(
+            db, db_file.name, file_update.parent_id, user_id
+        )
+        if existing_file and existing_file.id != file_id:
+            raise ValueError(f"File or folder with name '{db_file.name}' already exists in the target directory")
+        
+        db_file.parent_id = file_update.parent_id
     
     db.commit()
     db.refresh(db_file)
