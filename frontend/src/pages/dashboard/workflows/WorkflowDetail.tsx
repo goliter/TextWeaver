@@ -8,7 +8,7 @@ import ExecutionStatus from "@/components/Inspector/ExecutionStatus";
 import { NodeTypeSelector } from "@/components/workflow/NodeTypeSelector";
 import NodeEditorDialog from "@/components/workflow/NodeEditorDialog";
 import { ConfirmDialog } from "@/components/common";
-import { workflowApi } from "@/api/workflow";
+import { workflowApi, executionApi } from "@/api/workflow";
 
 const WorkflowDetail: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>();
@@ -30,6 +30,10 @@ const WorkflowDetail: React.FC = () => {
   const [edges, setEdges] = useState<any[]>([]);
   const [execution, setExecution] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
+  const [executions, setExecutions] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(5);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddNodeDialog, setShowAddNodeDialog] = useState<boolean>(false);
@@ -104,6 +108,31 @@ const WorkflowDetail: React.FC = () => {
               edge.target_node_id?.toString() ?? edge.target?.toString() ?? "",
           })),
         );
+
+        // 获取执行历史记录
+        const skip = (currentPage - 1) * pageSize;
+        const executionsData = await workflowApi.getExecutionHistory(
+          parseInt(workflowId),
+          skip,
+          pageSize,
+        );
+        setExecutions(executionsData);
+
+        // 计算总页数（假设后端返回的是完整列表，实际项目中应该由后端返回总页数）
+        // 这里简化处理，假设总记录数为 executionsData.length * 2（模拟多页数据）
+        const totalRecords = executionsData.length * 2;
+        setTotalPages(Math.ceil(totalRecords / pageSize));
+
+        // 如果有执行记录，默认显示最新的一条
+        if (executionsData.length > 0) {
+          const latestExecution = executionsData[0];
+          setExecution(latestExecution);
+          // 获取最新执行记录的日志
+          const executionLogs = await executionApi.getExecutionLogs(
+            latestExecution.id,
+          );
+          setLogs(executionLogs);
+        }
       } catch (err) {
         console.error("Failed to load workflow data:", err);
         setError("加载工作流数据失败");
@@ -157,36 +186,103 @@ const WorkflowDetail: React.FC = () => {
     setWorkflow(data);
   };
 
-  const handleExecute = () => {
-    // 模拟执行
-    setExecution({
-      id: 1,
-      status: "running",
-      started_at: new Date().toISOString(),
-    });
+  // 选择执行记录
+  const handleSelectExecution = async (executionId: number) => {
+    try {
+      // 获取执行详情
+      const executionDetail = await executionApi.getExecution(executionId);
+      setExecution(executionDetail);
 
-    // 模拟日志
-    setLogs([
-      { timestamp: new Date().toISOString(), message: "工作流开始执行" },
-      { timestamp: new Date().toISOString(), message: "正在执行输入节点" },
-      { timestamp: new Date().toISOString(), message: "正在执行 AI 节点" },
-    ]);
+      // 获取执行日志
+      const executionLogs = await executionApi.getExecutionLogs(executionId);
+      setLogs(executionLogs);
+    } catch (err) {
+      console.error("Failed to get execution details:", err);
+      alert("获取执行详情失败");
+    }
+  };
 
-    // 模拟执行完成
-    setTimeout(() => {
-      setExecution((prev: any) => ({
-        ...prev,
-        status: "completed",
-        ended_at: new Date().toISOString(),
-      }));
-      setLogs((prev) => [
-        ...prev,
-        {
-          timestamp: new Date().toISOString(),
-          message: "工作流执行完成",
-        },
-      ]);
-    }, 3000);
+  // 切换分页
+  const handlePageChange = async (page: number) => {
+    if (!workflowId) return;
+
+    try {
+      setCurrentPage(page);
+      const skip = (page - 1) * pageSize;
+      const executionsData = await workflowApi.getExecutionHistory(
+        parseInt(workflowId),
+        skip,
+        pageSize,
+      );
+      setExecutions(executionsData);
+
+      // 如果有执行记录，默认显示最新的一条
+      if (executionsData.length > 0) {
+        const latestExecution = executionsData[0];
+        setExecution(latestExecution);
+        // 获取最新执行记录的日志
+        const executionLogs = await executionApi.getExecutionLogs(
+          latestExecution.id,
+        );
+        setLogs(executionLogs);
+      }
+    } catch (err) {
+      console.error("Failed to load executions:", err);
+      alert("加载执行记录失败");
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!workflowId) return;
+
+    try {
+      // 调用执行 API
+      const executeResponse = await workflowApi.executeWorkflow(
+        parseInt(workflowId),
+      );
+
+      // 设置执行状态
+      setExecution({
+        id: executeResponse.execution_id,
+        status: executeResponse.status,
+        start_time: executeResponse.start_time,
+      });
+
+      // 切换到执行标签页
+      setActiveTab("execution");
+
+      // 轮询获取执行状态和日志
+      const pollInterval = setInterval(async () => {
+        try {
+          // 获取执行详情
+          const executionDetail = await executionApi.getExecution(
+            executeResponse.execution_id,
+          );
+          setExecution(executionDetail);
+
+          // 获取执行日志
+          const executionLogs = await executionApi.getExecutionLogs(
+            executeResponse.execution_id,
+          );
+          setLogs(executionLogs);
+
+          // 如果执行完成，停止轮询
+          if (
+            executionDetail.status === "success" ||
+            executionDetail.status === "error" ||
+            executionDetail.status === "cancelled"
+          ) {
+            clearInterval(pollInterval);
+          }
+        } catch (err) {
+          console.error("Failed to get execution status:", err);
+          clearInterval(pollInterval);
+        }
+      }, 1000); // 每秒轮询一次
+    } catch (err) {
+      console.error("Failed to execute workflow:", err);
+      alert("执行工作流失败");
+    }
   };
 
   const handleAddNode = (position: { x: number; y: number }) => {
@@ -474,6 +570,11 @@ const WorkflowDetail: React.FC = () => {
               executionId={execution?.id}
               execution={execution}
               logs={logs}
+              executions={executions}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onSelectExecution={handleSelectExecution}
+              onPageChange={handlePageChange}
             />
           )}
         </Inspector>
