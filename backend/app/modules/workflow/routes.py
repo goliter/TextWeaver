@@ -4,7 +4,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.modules.auth.jwt import get_current_active_user
 from app.modules.auth.models import User
-from app.modules.workflow import crud, schemas
+from app.modules.workflow import crud, schemas, engine
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
@@ -250,12 +250,12 @@ def execute_workflow(
             detail="Workflow not found"
         )
     
-    # 创建执行记录
-    execution = crud.create_execution(db, flow_id=flow_id, user_id=current_user.id)
+    # 获取输入数据
+    inputs = execute_request.inputs if execute_request else {}
     
-    # TODO: 启动异步执行引擎
-    # 这里应该调用执行引擎来异步执行工作流
-    # 目前先返回执行记录，状态为 pending
+    # 创建执行引擎并执行工作流
+    execution_engine = engine.ExecutionEngine(db)
+    execution = execution_engine.execute_workflow(flow_id=flow_id, user_id=current_user.id, inputs=inputs)
     
     return {
         "execution_id": execution.id,
