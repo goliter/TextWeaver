@@ -54,10 +54,10 @@ class ExecutionEngine:
             # 构建节点映射
             node_map = {node.id: node for node in nodes}
             
-            # 构建边映射（按目标节点分组）
-            edges_by_target = {node.id: [] for node in nodes}
+            # 构建边映射（按源节点分组）
+            edges_by_source = {node.id: [] for node in nodes}
             for edge in edges:
-                edges_by_target[edge.target_node_id].append(edge)
+                edges_by_source[edge.source_node_id].append(edge)
             
             # 查找开始节点
             start_node = None
@@ -71,7 +71,7 @@ class ExecutionEngine:
             
             # 执行工作流
             execution_data = inputs or {}
-            self._execute_node(start_node, execution.id, execution_data, node_map, edges_by_target)
+            self._execute_node(start_node, execution.id, execution_data, node_map, edges_by_source)
             
             # 更新执行状态为成功
             crud.update_execution_status(self.db, execution_id=execution.id, status="success")
@@ -86,7 +86,7 @@ class ExecutionEngine:
             raise
     
     def _execute_node(self, node: models.Node, execution_id: int, input_data: Dict[str, Any], 
-                     node_map: Dict[int, models.Node], edges_by_target: Dict[int, List[models.Edge]]):
+                     node_map: Dict[int, models.Node], edges_by_source: Dict[int, List[models.Edge]]):
         """执行单个节点
         
         Args:
@@ -94,7 +94,7 @@ class ExecutionEngine:
             execution_id: 执行记录ID
             input_data: 输入数据
             node_map: 节点映射
-            edges_by_target: 边映射（按目标节点分组）
+            edges_by_source: 边映射（按源节点分组）
         """
         # 创建执行日志
         log = crud.create_execution_log(self.db, execution_id=execution_id, node_id=node.id)
@@ -115,10 +115,10 @@ class ExecutionEngine:
             crud.update_execution_log(self.db, log_id=log.id, status="success", output_data=output_data)
             
             # 找到下一个节点并执行
-            for edge in edges_by_target.get(node.id, []):
+            for edge in edges_by_source.get(node.id, []):
                 target_node = node_map.get(edge.target_node_id)
                 if target_node:
-                    self._execute_node(target_node, execution_id, output_data, node_map, edges_by_target)
+                    self._execute_node(target_node, execution_id, output_data, node_map, edges_by_source)
             
         except Exception as e:
             # 更新日志状态为错误
