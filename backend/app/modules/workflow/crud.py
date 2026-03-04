@@ -327,8 +327,8 @@ def update_execution_status(db: Session, execution_id: int, status: str, error_m
     if error_message:
         db_execution.error_message = error_message
     if status in ["success", "error", "cancelled"]:
-        from datetime import datetime
-        db_execution.end_time = datetime.now()
+        from datetime import datetime, timezone
+        db_execution.end_time = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(db_execution)
@@ -370,8 +370,8 @@ def update_execution_log(db: Session, log_id: int, status: str,
     if error_message:
         db_log.error_message = error_message
     if status in ["success", "error"]:
-        from datetime import datetime
-        db_log.end_time = datetime.now()
+        from datetime import datetime, timezone
+        db_log.end_time = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(db_log)
