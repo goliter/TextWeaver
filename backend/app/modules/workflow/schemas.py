@@ -8,6 +8,8 @@ class NodeType(str, Enum):
     """节点类型枚举"""
     INPUT = "input"
     OUTPUT = "output"
+    START = "start"
+    END = "end"
     AI = "ai"
     FILE_READER = "file_reader"
     FILE_WRITER = "file_writer"

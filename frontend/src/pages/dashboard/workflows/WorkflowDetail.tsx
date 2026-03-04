@@ -6,6 +6,7 @@ import NodeConfig from "@/components/Inspector/NodeConfig";
 import FlowConfig from "@/components/Inspector/FlowConfig";
 import ExecutionStatus from "@/components/Inspector/ExecutionStatus";
 import { NodeTypeSelector } from "@/components/workflow/NodeTypeSelector";
+import NodeEditorDialog from "@/components/workflow/NodeEditorDialog";
 import { ConfirmDialog } from "@/components/common";
 import { workflowApi } from "@/api/workflow";
 
@@ -36,7 +37,13 @@ const WorkflowDetail: React.FC = () => {
     x: number;
     y: number;
   }>({ x: 0, y: 0 });
-  const [newNodeType, setNewNodeType] = useState<string>("input");
+  const [nodeEditor, setNodeEditor] = useState<{
+    isOpen: boolean;
+    node: any | null;
+  }>({
+    isOpen: false,
+    node: null,
+  });
 
   // 确认框状态
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -77,6 +84,7 @@ const WorkflowDetail: React.FC = () => {
           nodesData.map((node: any) => ({
             ...node,
             id: node.id.toString(),
+            type: node.node_type,
             position: {
               x: node.position?.x ?? 0,
               y: node.position?.y ?? 0,
@@ -120,15 +128,29 @@ const WorkflowDetail: React.FC = () => {
     setActiveTab("node");
   };
 
-  const handleNodeUpdate = (data: any) => {
+  const handleNodeUpdate = (data: any, nodeId?: string) => {
+    const targetNodeId = nodeId || selectedNodeId;
+    if (!targetNodeId) return;
+
     setNodes((prevNodes) => {
       return prevNodes.map((node) => {
-        if (node.id === selectedNodeId) {
+        if (node.id === targetNodeId) {
           return { ...node, data };
         }
         return node;
       });
     });
+  };
+
+  // 编辑节点
+  const handleNodeEdit = (nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (node) {
+      setNodeEditor({
+        isOpen: true,
+        node: node,
+      });
+    }
   };
 
   const handleWorkflowUpdate = (data: any) => {
@@ -172,36 +194,42 @@ const WorkflowDetail: React.FC = () => {
     setShowAddNodeDialog(true);
   };
 
-  const handleCreateNode = async () => {
+  const handleCreateNode = async (nodeType: string) => {
     if (!workflowId) return;
 
     try {
+      // 转换节点类型名称为后端格式
+      const backendNodeType =
+        nodeType === "fileReader"
+          ? "file_reader"
+          : nodeType === "fileWriter"
+            ? "file_writer"
+            : nodeType;
+
       const nodeData: any = {
-        node_type: newNodeType,
-        name: getNodeLabel(newNodeType),
+        node_type: backendNodeType,
+        name: getNodeLabel(nodeType),
         position: {
           x: newNodePosition.x,
           y: newNodePosition.y,
         },
         data: {
-          label: getNodeLabel(newNodeType),
+          label: getNodeLabel(nodeType),
         },
       };
 
       // 根据节点类型设置默认数据
-      if (newNodeType === "input") {
-        nodeData.data.name = "input";
-        nodeData.data.type = "text";
-      } else if (newNodeType === "output") {
-        nodeData.data.name = "output";
-        nodeData.data.type = "text";
-      } else if (newNodeType === "ai") {
+      if (nodeType === "start") {
+        nodeData.data.name = "start";
+      } else if (nodeType === "end") {
+        nodeData.data.name = "end";
+      } else if (nodeType === "ai") {
         nodeData.data.model = "gpt-3.5-turbo";
         nodeData.data.prompt = "请总结以下内容: {{input}}";
-      } else if (newNodeType === "fileReader") {
+      } else if (nodeType === "fileReader") {
         nodeData.data.filePath = "";
         nodeData.data.encoding = "utf-8";
-      } else if (newNodeType === "fileWriter") {
+      } else if (nodeType === "fileWriter") {
         nodeData.data.filePath = "";
         nodeData.data.encoding = "utf-8";
         nodeData.data.overwrite = false;
@@ -217,6 +245,7 @@ const WorkflowDetail: React.FC = () => {
         {
           ...newNode,
           id: newNode.id.toString(),
+          type: newNode.node_type, // 添加 type 属性
           position: {
             x: newNode.position?.x ?? 0,
             y: newNode.position?.y ?? 0,
@@ -233,10 +262,10 @@ const WorkflowDetail: React.FC = () => {
 
   const getNodeLabel = (type: string): string => {
     switch (type) {
-      case "input":
-        return "输入节点";
-      case "output":
-        return "输出节点";
+      case "start":
+        return "开始节点";
+      case "end":
+        return "结束节点";
       case "ai":
         return "AI 节点";
       case "fileReader":
@@ -248,31 +277,37 @@ const WorkflowDetail: React.FC = () => {
     }
   };
 
-  const handleDeleteNode = (nodeId: string) => {
+  const handleDeleteNode = async (nodeId: string) => {
     if (!workflowId) return;
 
-    const node = nodes.find((n) => n.id === nodeId);
-    setConfirmDialog({
-      isOpen: true,
-      title: "删除节点",
-      message: `确定要删除节点 "${node?.data?.label || node?.name || "未命名节点"}" 吗？相关的连接也会被删除。`,
-      danger: true,
-      onConfirm: async () => {
-        try {
-          await workflowApi.deleteNode(parseInt(workflowId), parseInt(nodeId));
-          setNodes((prev) => prev.filter((node) => node.id !== nodeId));
-          setEdges((prev) =>
-            prev.filter(
-              (edge) => edge.source !== nodeId && edge.target !== nodeId,
-            ),
-          );
-          setSelectedNodeId(null);
-        } catch (err) {
-          console.error("Failed to delete node:", err);
-          alert("删除节点失败");
-        }
-        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-      },
+    return new Promise<void>((resolve) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      setConfirmDialog({
+        isOpen: true,
+        title: "删除节点",
+        message: `确定要删除节点 "${node?.data?.label || node?.name || "未命名节点"}" 吗？相关的连接也会被删除。`,
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await workflowApi.deleteNode(
+              parseInt(workflowId),
+              parseInt(nodeId),
+            );
+            setNodes((prev) => prev.filter((node) => node.id !== nodeId));
+            setEdges((prev) =>
+              prev.filter(
+                (edge) => edge.source !== nodeId && edge.target !== nodeId,
+              ),
+            );
+            setSelectedNodeId(null);
+          } catch (err) {
+            console.error("Failed to delete node:", err);
+            alert("删除节点失败");
+          }
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+          resolve();
+        },
+      });
     });
   };
 
@@ -411,6 +446,8 @@ const WorkflowDetail: React.FC = () => {
                 onAddNode={handleAddNode}
                 onEdgeConnect={handleEdgeConnect}
                 onEdgeDelete={handleEdgeDelete}
+                onNodeDelete={handleDeleteNode}
+                onNodeEdit={handleNodeEdit}
                 onNodeDragStop={handleNodeDragStop}
               />
             )}
@@ -446,8 +483,7 @@ const WorkflowDetail: React.FC = () => {
       <NodeTypeSelector
         isOpen={showAddNodeDialog}
         onSelect={(type) => {
-          setNewNodeType(type);
-          handleCreateNode();
+          handleCreateNode(type);
         }}
         onCancel={() => setShowAddNodeDialog(false)}
       />
@@ -462,6 +498,19 @@ const WorkflowDetail: React.FC = () => {
         onCancel={() =>
           setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
         }
+      />
+
+      {/* 节点编辑弹窗 */}
+      <NodeEditorDialog
+        isOpen={nodeEditor.isOpen}
+        node={nodeEditor.node}
+        onSave={(data) => {
+          if (nodeEditor.node) {
+            handleNodeUpdate(data, nodeEditor.node.id);
+          }
+          setNodeEditor({ isOpen: false, node: null });
+        }}
+        onCancel={() => setNodeEditor({ isOpen: false, node: null })}
       />
     </div>
   );
