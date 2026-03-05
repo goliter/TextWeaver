@@ -3,7 +3,9 @@ import { Handle, Position, type Node } from "@xyflow/react";
 
 type AINodeProps = Node<Node<any>, "ai">;
 
-const AINode: React.FC<AINodeProps> = ({ selected }) => {
+const AINode: React.FC<AINodeProps> = ({ selected, data }) => {
+  const nodeName = data?.name || "AI";
+
   return (
     <div
       className={`w-40 p-3 rounded-lg shadow-md border-2 ${
@@ -15,6 +17,9 @@ const AINode: React.FC<AINodeProps> = ({ selected }) => {
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-purple-500" />
         <span className="font-medium text-gray-900">AI</span>
+      </div>
+      <div className="mt-1 text-xs text-gray-600 truncate" title={nodeName}>
+        {nodeName}
       </div>
       <Handle type="source" position={Position.Bottom} />
     </div>

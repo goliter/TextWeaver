@@ -3,7 +3,9 @@ import { Handle, Position, type Node } from "@xyflow/react";
 
 type FileWriterNodeProps = Node<Node<any>, "file_writer">;
 
-const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected }) => {
+const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected, data }) => {
+  const nodeName = data?.name || "文件写入";
+
   return (
     <div
       className={`w-40 p-3 rounded-lg shadow-md border-2 ${
@@ -15,6 +17,9 @@ const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected }) => {
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-orange-500" />
         <span className="font-medium text-gray-900">文件写入</span>
+      </div>
+      <div className="mt-1 text-xs text-gray-600 truncate" title={nodeName}>
+        {nodeName}
       </div>
       <Handle type="source" position={Position.Bottom} />
     </div>

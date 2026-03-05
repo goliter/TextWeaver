@@ -69,8 +69,8 @@ const WorkflowDetail: React.FC = () => {
     navigate("/dashboard/workflows");
   };
 
-  // 加载工作流数据
-  const loadWorkflowData = async () => {
+  // 加载工作流基本数据（工作流详情、节点、边）
+  const loadWorkflowBasicData = async () => {
     if (!workflowId) return;
 
     try {
@@ -107,7 +107,19 @@ const WorkflowDetail: React.FC = () => {
             edge.target_node_id?.toString() ?? edge.target?.toString() ?? "",
         })),
       );
+    } catch (err) {
+      console.error("Failed to load workflow basic data:", err);
+      setError("加载工作流数据失败");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // 加载执行记录数据
+  const loadExecutionData = async () => {
+    if (!workflowId) return;
+
+    try {
       // 获取总执行次数
       const totalRecords = await workflowApi.getExecutionCount(
         parseInt(workflowId),
@@ -132,17 +144,20 @@ const WorkflowDetail: React.FC = () => {
         setExecution(latestExecution);
       }
     } catch (err) {
-      console.error("Failed to load workflow data:", err);
-      setError("加载工作流数据失败");
-    } finally {
-      setLoading(false);
+      console.error("Failed to load execution data:", err);
     }
   };
 
-  // 当工作流ID或页码变化时，加载工作流数据
+  // 当工作流ID变化时，加载工作流基本数据
   useEffect(() => {
-    loadWorkflowData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadWorkflowBasicData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowId]);
+
+  // 当页码变化时，只加载执行记录数据
+  useEffect(() => {
+    loadExecutionData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId, currentPage]);
 
   const handleNodesChange = (newNodes: any[]) => {
@@ -299,7 +314,7 @@ const WorkflowDetail: React.FC = () => {
             clearInterval(pollInterval);
             setIsExecuting(false);
             // 刷新执行历史记录
-            loadWorkflowData();
+            loadExecutionData();
           }
         } catch (err) {
           console.error("Failed to get execution status:", err);

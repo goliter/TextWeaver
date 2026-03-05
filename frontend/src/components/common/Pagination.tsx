@@ -19,40 +19,61 @@ const Pagination: React.FC<PaginationProps> = ({
   // 生成页码数组
   const generatePageNumbers = () => {
     const pages: (number | string)[] = [];
-    
+
+    // 如果总页数较少，直接显示所有页码
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
     // 总是显示第一页
     pages.push(1);
-    
+
     // 计算中间显示的页码
-    const halfVisible = Math.floor(maxVisiblePages / 2);
-    const startPage = Math.max(2, currentPage - halfVisible);
+    const halfVisible = Math.floor((maxVisiblePages - 2) / 2);
+    let startPage = Math.max(2, currentPage - halfVisible);
     let endPage = Math.min(totalPages - 1, currentPage + halfVisible);
-    
-    // 确保显示的页码数量不超过 maxVisiblePages
-    if (endPage - startPage + 1 > maxVisiblePages - 2) {
-      endPage = startPage + (maxVisiblePages - 2) - 1;
+
+    // 调整起始和结束页码，确保显示正确数量的页码
+    const visibleMiddlePages = endPage - startPage + 1;
+    const targetVisiblePages = maxVisiblePages - 2; // 减去第一页和最后一页
+
+    if (visibleMiddlePages < targetVisiblePages) {
+      // 需要添加更多页码
+      const diff = targetVisiblePages - visibleMiddlePages;
+      // 尝试向右扩展
+      if (endPage < totalPages - 1) {
+        endPage = Math.min(totalPages - 1, endPage + diff);
+      }
+      // 如果还不能满足，向左扩展
+      if (endPage - startPage + 1 < targetVisiblePages && startPage > 2) {
+        const remainingDiff = targetVisiblePages - (endPage - startPage + 1);
+        startPage = Math.max(2, startPage - remainingDiff);
+      }
     }
-    
+
     // 添加省略号（如果需要）
     if (startPage > 2) {
-      pages.push('...');
+      pages.push("...");
     }
-    
+
     // 添加中间页码
     for (let i = startPage; i <= endPage; i++) {
       pages.push(i);
     }
-    
+
     // 添加省略号（如果需要）
     if (endPage < totalPages - 1) {
-      pages.push('...');
+      pages.push("...");
     }
-    
+
     // 总是显示最后一页
     if (totalPages > 1) {
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
@@ -92,10 +113,10 @@ const Pagination: React.FC<PaginationProps> = ({
 
       {/* 页码 */}
       {generatePageNumbers().map((page, index) => {
-        if (page === '...') {
+        if (page === "...") {
           return (
             <button
-              key={index}
+              key={`ellipsis-${index}`}
               onClick={() => setShowPageSelector(!showPageSelector)}
               className="px-2 py-1 text-xs border rounded-md hover:bg-gray-50 cursor-pointer"
             >
@@ -103,13 +124,15 @@ const Pagination: React.FC<PaginationProps> = ({
             </button>
           );
         }
-        
+
         return (
           <button
             key={page}
             onClick={() => handlePageClick(page as number)}
             className={`px-2 py-1 text-xs border rounded-md ${
-              currentPage === page ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50"
+              currentPage === page
+                ? "bg-indigo-50 text-indigo-600"
+                : "hover:bg-gray-50"
             }`}
           >
             {page}
