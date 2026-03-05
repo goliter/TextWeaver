@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+import React, { useState, useEffect } from "react";
 
 interface NodeEditorDialogProps {
   isOpen: boolean;
@@ -13,7 +14,14 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
   onSave,
   onCancel,
 }) => {
-  const [formData, setFormData] = useState<any>(node?.data || {});
+  const [formData, setFormData] = useState<any>({});
+
+  // 当 node 变化时，更新 formData
+  useEffect(() => {
+    if (node?.data) {
+      setFormData(node.data);
+    }
+  }, [node]);
 
   if (!isOpen || !node) return null;
 

@@ -285,3 +285,22 @@ def get_execution_history(
     
     executions = crud.get_executions_by_flow(db, flow_id=flow_id, user_id=current_user.id, skip=skip, limit=limit)
     return executions
+
+
+@router.get("/{flow_id}/executions/count", response_model=int)
+def get_execution_count(
+    flow_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取工作流的执行记录总数"""
+    # 验证工作流存在
+    flow = crud.get_flow(db, flow_id=flow_id, user_id=current_user.id)
+    if not flow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workflow not found"
+        )
+    
+    count = crud.get_execution_count_by_flow(db, flow_id=flow_id, user_id=current_user.id)
+    return count

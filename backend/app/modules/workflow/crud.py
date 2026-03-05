@@ -301,6 +301,14 @@ def get_executions_by_flow(db: Session, flow_id: int, user_id: int, skip: int = 
     ).order_by(desc(models.Execution.start_time)).offset(skip).limit(limit).all()
 
 
+def get_execution_count_by_flow(db: Session, flow_id: int, user_id: int) -> int:
+    """获取工作流的执行记录总数"""
+    return db.query(models.Execution).filter(
+        models.Execution.flow_id == flow_id,
+        models.Execution.user_id == user_id
+    ).count()
+
+
 def create_execution(db: Session, flow_id: int, user_id: int) -> models.Execution:
     """创建执行记录"""
     db_execution = models.Execution(

@@ -27,19 +27,10 @@ class AINodeExecutor(NodeExecutor):
         prompt = node.data.get("prompt", "请处理以下内容: {input}")
         system_prompt = node.data.get("system_prompt", "")
         
-        # 智能处理输入数据，确保有可用的输入内容
-        # 检查常见的输入字段
-        input_content = ""
-        if "input" in input_data:
-            input_content = input_data["input"]
-        elif "response" in input_data:
-            input_content = input_data["response"]
-        elif "text" in input_data:
-            input_content = input_data["text"]
-        elif "content" in input_data:
-            input_content = input_data["content"]
+        # 获取输入内容，优先使用 output 字段（统一输出格式）
+        input_content = input_data.get("output", "")
         
-        # 确保 input_data 包含 input 字段
+        # 确保 input_data 包含 input 字段（用于提示词模板）
         input_data = {"input": input_content, **input_data}
         
         # 使用 LangChain 生成文本
@@ -58,9 +49,9 @@ class AINodeExecutor(NodeExecutor):
                     context=input_data
                 )
             
+            # 统一输出格式，只返回AI响应内容
             output_data = {
-                "response": result,
-                "model": model
+                "output": result
             }
             
             logger.info(f"AI node execution completed: {node.name}")

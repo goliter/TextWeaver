@@ -33,9 +33,11 @@ const WorkflowDetail: React.FC = () => {
   const [executions, setExecutions] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalExecutions, setTotalExecutions] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(5);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [showAddNodeDialog, setShowAddNodeDialog] = useState<boolean>(false);
   const [newNodePosition, setNewNodePosition] = useState<{
     x: number;
@@ -68,81 +70,80 @@ const WorkflowDetail: React.FC = () => {
   };
 
   // 加载工作流数据
-  useEffect(() => {
-    const loadWorkflowData = async () => {
-      if (!workflowId) return;
+  const loadWorkflowData = async () => {
+    if (!workflowId) return;
 
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        // 获取工作流详情
-        const workflowData = await workflowApi.getWorkflow(
-          parseInt(workflowId),
-        );
-        setWorkflow(workflowData);
+      // 获取工作流详情
+      const workflowData = await workflowApi.getWorkflow(parseInt(workflowId));
+      setWorkflow(workflowData);
 
-        // 获取节点
-        const nodesData = await workflowApi.getNodes(parseInt(workflowId));
-        setNodes(
-          nodesData.map((node: any) => ({
-            ...node,
-            id: node.id.toString(),
-            type: node.node_type,
-            position: {
-              x: node.position?.x ?? 0,
-              y: node.position?.y ?? 0,
-            },
-          })),
-        );
+      // 获取节点
+      const nodesData = await workflowApi.getNodes(parseInt(workflowId));
+      setNodes(
+        nodesData.map((node: any) => ({
+          ...node,
+          id: node.id.toString(),
+          type: node.node_type,
+          position: {
+            x: node.position?.x ?? 0,
+            y: node.position?.y ?? 0,
+          },
+        })),
+      );
 
-        // 获取边
-        const edgesData = await workflowApi.getEdges(parseInt(workflowId));
-        setEdges(
-          edgesData.map((edge: any) => ({
-            ...edge,
-            id: edge.id.toString(),
-            source:
-              edge.source_node_id?.toString() ?? edge.source?.toString() ?? "",
-            target:
-              edge.target_node_id?.toString() ?? edge.target?.toString() ?? "",
-          })),
-        );
+      // 获取边
+      const edgesData = await workflowApi.getEdges(parseInt(workflowId));
+      setEdges(
+        edgesData.map((edge: any) => ({
+          ...edge,
+          id: edge.id.toString(),
+          source:
+            edge.source_node_id?.toString() ?? edge.source?.toString() ?? "",
+          target:
+            edge.target_node_id?.toString() ?? edge.target?.toString() ?? "",
+        })),
+      );
 
-        // 获取执行历史记录
-        const skip = (currentPage - 1) * pageSize;
-        const executionsData = await workflowApi.getExecutionHistory(
-          parseInt(workflowId),
-          skip,
-          pageSize,
-        );
-        setExecutions(executionsData);
+      // 获取总执行次数
+      const totalRecords = await workflowApi.getExecutionCount(
+        parseInt(workflowId),
+      );
+      setTotalExecutions(totalRecords);
 
-        // 计算总页数（假设后端返回的是完整列表，实际项目中应该由后端返回总页数）
-        // 这里简化处理，假设总记录数为 executionsData.length * 2（模拟多页数据）
-        const totalRecords = executionsData.length * 2;
-        setTotalPages(Math.ceil(totalRecords / pageSize));
+      // 获取当前页的执行记录
+      const skip = (currentPage - 1) * pageSize;
+      const executionsData = await workflowApi.getExecutionHistory(
+        parseInt(workflowId),
+        skip,
+        pageSize,
+      );
+      setExecutions(executionsData);
 
-        // 如果有执行记录，默认显示最新的一条
-        if (executionsData.length > 0) {
-          const latestExecution = executionsData[0];
-          setExecution(latestExecution);
-          // 获取最新执行记录的日志
-          const executionLogs = await executionApi.getExecutionLogs(
-            latestExecution.id,
-          );
-          setLogs(executionLogs);
-        }
-      } catch (err) {
-        console.error("Failed to load workflow data:", err);
-        setError("加载工作流数据失败");
-      } finally {
-        setLoading(false);
+      // 计算总页数
+      setTotalPages(Math.ceil(totalRecords / pageSize));
+
+      // 如果有执行记录，默认选中第一条但不加载日志
+      if (executionsData.length > 0) {
+        const latestExecution = executionsData[0];
+        setExecution(latestExecution);
       }
-    };
+    } catch (err) {
+      console.error("Failed to load workflow data:", err);
+      setError("加载工作流数据失败");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // 当工作流ID或页码变化时，加载工作流数据
+  useEffect(() => {
     loadWorkflowData();
-  }, [workflowId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowId, currentPage]);
 
   const handleNodesChange = (newNodes: any[]) => {
     setNodes(newNodes);
@@ -229,15 +230,16 @@ const WorkflowDetail: React.FC = () => {
       );
       setExecutions(executionsData);
 
-      // 如果有执行记录，默认显示最新的一条
+      // 如果有执行记录，默认选中第一条但不加载日志
       if (executionsData.length > 0) {
         const latestExecution = executionsData[0];
         setExecution(latestExecution);
-        // 获取最新执行记录的日志
-        const executionLogs = await executionApi.getExecutionLogs(
-          latestExecution.id,
-        );
-        setLogs(executionLogs);
+        // 清空日志，等待用户点击后再加载
+        setLogs([]);
+      } else {
+        // 没有执行记录时清空状态
+        setExecution(null);
+        setLogs([]);
       }
     } catch (err) {
       console.error("Failed to load executions:", err);
@@ -246,12 +248,15 @@ const WorkflowDetail: React.FC = () => {
   };
 
   const handleExecute = async () => {
-    if (!workflowId) return;
+    if (!workflowId || isExecuting) return;
+
+    setIsExecuting(true);
 
     try {
       // 调用执行 API
       const executeResponse = await workflowApi.executeWorkflow(
         parseInt(workflowId),
+        {},
       );
 
       // 设置执行状态
@@ -263,6 +268,12 @@ const WorkflowDetail: React.FC = () => {
 
       // 切换到执行标签页
       setActiveTab("execution");
+
+      // 立即获取一次执行日志
+      const executionLogs = await executionApi.getExecutionLogs(
+        executeResponse.execution_id,
+      );
+      setLogs(executionLogs);
 
       // 轮询获取执行状态和日志
       const pollInterval = setInterval(async () => {
@@ -279,22 +290,27 @@ const WorkflowDetail: React.FC = () => {
           );
           setLogs(executionLogs);
 
-          // 如果执行完成，停止轮询
+          // 如果执行完成，停止轮询并更新执行状态
           if (
             executionDetail.status === "success" ||
             executionDetail.status === "error" ||
             executionDetail.status === "cancelled"
           ) {
             clearInterval(pollInterval);
+            setIsExecuting(false);
+            // 刷新执行历史记录
+            loadWorkflowData();
           }
         } catch (err) {
           console.error("Failed to get execution status:", err);
           clearInterval(pollInterval);
+          setIsExecuting(false);
         }
       }, 1000); // 每秒轮询一次
     } catch (err) {
       console.error("Failed to execute workflow:", err);
       alert("执行工作流失败");
+      setIsExecuting(false);
     }
   };
 
@@ -524,9 +540,40 @@ const WorkflowDetail: React.FC = () => {
         <div className="flex items-center space-x-3">
           <button
             onClick={handleExecute}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            disabled={isExecuting}
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+              isExecuting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+            }`}
           >
-            执行工作流
+            {isExecuting ? (
+              <>
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <span>执行中...</span>
+              </>
+            ) : (
+              <span>执行工作流</span>
+            )}
           </button>
         </div>
       </header>
@@ -586,6 +633,7 @@ const WorkflowDetail: React.FC = () => {
               executions={executions}
               currentPage={currentPage}
               totalPages={totalPages}
+              totalExecutions={totalExecutions}
               onSelectExecution={handleSelectExecution}
               onPageChange={handlePageChange}
             />
@@ -625,7 +673,6 @@ const WorkflowDetail: React.FC = () => {
           setNodeEditor({ isOpen: false, node: null });
         }}
         onCancel={() => setNodeEditor({ isOpen: false, node: null })}
-        key={selectedNode?.id || "new-node"}
       />
     </div>
   );

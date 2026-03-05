@@ -8,196 +8,97 @@ interface NodeConfigProps {
 
 const NodeConfig: React.FC<NodeConfigProps> = ({
   node,
-  onNodeUpdate,
+  //onNodeUpdate,
   onDeleteNode,
 }) => {
   if (!node) {
     return (
       <div className="text-center py-12 text-gray-500">
-        选择一个节点进行配置
+        选择一个节点查看详情
       </div>
     );
   }
 
-  const handleChange = (field: string, value: any) => {
-    onNodeUpdate({ ...node.data, [field]: value });
+  // 获取节点类型显示名称
+  const getNodeTypeName = (type: string) => {
+    switch (type) {
+      case "start":
+        return "开始节点";
+      case "end":
+        return "结束节点";
+      case "ai":
+        return "AI 节点";
+      case "fileReader":
+        return "文件读取节点";
+      case "fileWriter":
+        return "文件写入节点";
+      case "input":
+        return "输入节点";
+      case "output":
+        return "输出节点";
+      default:
+        return "未知节点";
+    }
   };
+
+  // 渲染只读字段
+  const renderReadOnlyField = (label: string, value: string) => (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-gray-500">{label}</label>
+      <div className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-700">
+        {value || "-"}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-sm font-medium text-gray-900 mb-2">
-          {node.type === "input" && "输入节点配置"}
-          {node.type === "output" && "输出节点配置"}
-          {node.type === "ai" && "AI 节点配置"}
-          {node.type === "fileReader" && "文件读取配置"}
-          {node.type === "fileWriter" && "文件写入配置"}
+          {getNodeTypeName(node.type)}
         </h3>
+        <p className="text-xs text-gray-500">右键点击节点可编辑配置</p>
       </div>
 
-      {node.type === "input" && (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              输入名称
-            </label>
-            <input
-              type="text"
-              value={node.data.name || ""}
-              onChange={(e) => handleChange("name", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              输入类型
-            </label>
-            <select
-              value={node.data.type || "text"}
-              onChange={(e) => handleChange("type", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="text">文本</option>
-              <option value="number">数字</option>
-              <option value="boolean">布尔值</option>
-              <option value="json">JSON</option>
-            </select>
-          </div>
-        </div>
-      )}
+      {/* 通用信息 */}
+      <div className="space-y-3">
+        {renderReadOnlyField(
+          "节点名称",
+          node.data?.name || node.data?.label || "未命名",
+        )}
+        {renderReadOnlyField("节点类型", getNodeTypeName(node.type))}
+        {renderReadOnlyField("节点 ID", node.id)}
+      </div>
 
-      {node.type === "output" && (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              输出名称
-            </label>
-            <input
-              type="text"
-              value={node.data.name || ""}
-              onChange={(e) => handleChange("name", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              输出类型
-            </label>
-            <select
-              value={node.data.type || "text"}
-              onChange={(e) => handleChange("type", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="text">文本</option>
-              <option value="number">数字</option>
-              <option value="boolean">布尔值</option>
-              <option value="json">JSON</option>
-            </select>
-          </div>
-        </div>
-      )}
-
+      {/* AI 节点特定信息 */}
       {node.type === "ai" && (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              模型选择
+        <div className="space-y-3 pt-3 border-t border-gray-200">
+          {renderReadOnlyField("模型", node.data?.model || "gemini-2.5-flash")}
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-gray-500">
+              提示词
             </label>
-            <select
-              value={node.data.model || "gpt-3.5-turbo"}
-              onChange={(e) => handleChange("model", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-4o">GPT-4o</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Prompt
-            </label>
-            <textarea
-              value={node.data.prompt || ""}
-              onChange={(e) => handleChange("prompt", e.target.value)}
-              placeholder="输入提示词..."
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            />
+            <div className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+              {node.data?.prompt || "-"}
+            </div>
           </div>
         </div>
       )}
 
+      {/* 文件读取节点特定信息 */}
       {node.type === "fileReader" && (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              文件路径
-            </label>
-            <input
-              type="text"
-              value={node.data.filePath || ""}
-              onChange={(e) => handleChange("filePath", e.target.value)}
-              placeholder="输入文件路径..."
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              编码
-            </label>
-            <select
-              value={node.data.encoding || "utf-8"}
-              onChange={(e) => handleChange("encoding", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="utf-8">UTF-8</option>
-              <option value="ascii">ASCII</option>
-              <option value="base64">Base64</option>
-            </select>
-          </div>
+        <div className="space-y-3 pt-3 border-t border-gray-200">
+          {renderReadOnlyField("文件路径", node.data?.filePath || "-")}
+          {renderReadOnlyField("编码", node.data?.encoding || "utf-8")}
         </div>
       )}
 
+      {/* 文件写入节点特定信息 */}
       {node.type === "fileWriter" && (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              文件路径
-            </label>
-            <input
-              type="text"
-              value={node.data.filePath || ""}
-              onChange={(e) => handleChange("filePath", e.target.value)}
-              placeholder="输入文件路径..."
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              编码
-            </label>
-            <select
-              value={node.data.encoding || "utf-8"}
-              onChange={(e) => handleChange("encoding", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="utf-8">UTF-8</option>
-              <option value="ascii">ASCII</option>
-              <option value="base64">Base64</option>
-            </select>
-          </div>
-          <div>
-            <label className="flex items-center text-xs font-medium text-gray-700">
-              <input
-                type="checkbox"
-                checked={node.data.overwrite || false}
-                onChange={(e) => handleChange("overwrite", e.target.checked)}
-                className="mr-2"
-              />
-              覆盖现有文件
-            </label>
-          </div>
+        <div className="space-y-3 pt-3 border-t border-gray-200">
+          {renderReadOnlyField("文件路径", node.data?.filePath || "-")}
+          {renderReadOnlyField("编码", node.data?.encoding || "utf-8")}
+          {renderReadOnlyField("覆盖模式", node.data?.overwrite ? "是" : "否")}
         </div>
       )}
 

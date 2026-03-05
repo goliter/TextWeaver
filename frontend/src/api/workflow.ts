@@ -138,6 +138,13 @@ export const workflowApi = {
     );
     return response.data;
   },
+
+  getExecutionCount: async (flowId: number): Promise<number> => {
+    const response = await api.get<number>(
+      `/workflows/${flowId}/executions/count`,
+    );
+    return response.data;
+  },
 };
 
 export const executionApi = {
