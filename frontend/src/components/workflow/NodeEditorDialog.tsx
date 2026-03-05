@@ -27,7 +27,10 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onCancel} />
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={onCancel}
+      />
       <div className="relative bg-white rounded-lg shadow-xl p-6 w-[500px] max-w-[90vw] max-h-[80vh] overflow-y-auto">
         <h3 className="text-xl font-semibold text-gray-900 mb-2">
           {node.type === "input" && "编辑输入节点"}
@@ -36,9 +39,7 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
           {node.type === "fileReader" && "编辑文件读取节点"}
           {node.type === "fileWriter" && "编辑文件写入节点"}
         </h3>
-        <p className="text-sm text-gray-500 mb-6">
-          编辑节点的详细配置
-        </p>
+        <p className="text-sm text-gray-500 mb-6">编辑节点的详细配置</p>
 
         <div className="space-y-4">
           {node.type === "input" && (

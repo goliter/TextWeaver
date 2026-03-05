@@ -27,6 +27,21 @@ class AINodeExecutor(NodeExecutor):
         prompt = node.data.get("prompt", "请处理以下内容: {input}")
         system_prompt = node.data.get("system_prompt", "")
         
+        # 智能处理输入数据，确保有可用的输入内容
+        # 检查常见的输入字段
+        input_content = ""
+        if "input" in input_data:
+            input_content = input_data["input"]
+        elif "response" in input_data:
+            input_content = input_data["response"]
+        elif "text" in input_data:
+            input_content = input_data["text"]
+        elif "content" in input_data:
+            input_content = input_data["content"]
+        
+        # 确保 input_data 包含 input 字段
+        input_data = {"input": input_content, **input_data}
+        
         # 使用 LangChain 生成文本
         try:
             if system_prompt:

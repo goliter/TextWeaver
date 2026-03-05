@@ -157,18 +157,31 @@ const WorkflowDetail: React.FC = () => {
     setActiveTab("node");
   };
 
-  const handleNodeUpdate = (data: any, nodeId?: string) => {
+  const handleNodeUpdate = async (data: any, nodeId?: string) => {
     const targetNodeId = nodeId || selectedNodeId;
-    if (!targetNodeId) return;
+    if (!targetNodeId || !workflowId) return;
 
-    setNodes((prevNodes) => {
-      return prevNodes.map((node) => {
-        if (node.id === targetNodeId) {
-          return { ...node, data };
-        }
-        return node;
+    try {
+      // 调用后端 API 更新节点
+      await workflowApi.updateNode(
+        parseInt(workflowId),
+        parseInt(targetNodeId),
+        { data },
+      );
+
+      // 更新前端状态
+      setNodes((prevNodes) => {
+        return prevNodes.map((node) => {
+          if (node.id === targetNodeId) {
+            return { ...node, data };
+          }
+          return node;
+        });
       });
-    });
+    } catch (err) {
+      console.error("Failed to update node:", err);
+      alert("更新节点失败");
+    }
   };
 
   // 编辑节点
@@ -612,6 +625,7 @@ const WorkflowDetail: React.FC = () => {
           setNodeEditor({ isOpen: false, node: null });
         }}
         onCancel={() => setNodeEditor({ isOpen: false, node: null })}
+        key={selectedNode?.id || "new-node"}
       />
     </div>
   );
