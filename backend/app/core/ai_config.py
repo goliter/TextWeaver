@@ -11,7 +11,7 @@ class AISettings(BaseSettings):
     # OpenAI API 配置
     openai_api_key: str = ""
     openai_api_base: Optional[str] = None
-    openai_model: str = "gpt-3.5-turbo"
+    openai_model: str = "gemini-2.0-flash"
     
     # LangChain 配置
     langchain_verbose: bool = False

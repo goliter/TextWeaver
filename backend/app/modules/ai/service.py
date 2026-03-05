@@ -55,7 +55,7 @@ class LangChainService:
             formatted_prompt = prompt
         
         messages = [HumanMessage(content=formatted_prompt)]
-        response = self.llm(messages)
+        response = self.llm.invoke(messages)  # 使用 invoke 方法替代直接调用
         return response.content
     
     def generate_with_system_prompt(
@@ -84,7 +84,7 @@ class LangChainService:
         
         messages.append(HumanMessage(content=formatted_user_prompt))
         
-        response = self.llm(messages)
+        response = self.llm.invoke(messages)  # 使用 invoke 方法替代直接调用
         return response.content
 
 
