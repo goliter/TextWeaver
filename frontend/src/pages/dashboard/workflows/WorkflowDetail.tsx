@@ -893,7 +893,7 @@ const WorkflowDetail: React.FC = () => {
 
       {/* 文件节点类型选择对话框 */}
       {showFileNodeDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-80">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               创建文件节点
