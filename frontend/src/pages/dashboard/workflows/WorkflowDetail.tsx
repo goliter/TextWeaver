@@ -9,16 +9,22 @@ import { NodeTypeSelector } from "@/components/workflow/NodeTypeSelector";
 import NodeEditorDialog from "@/components/workflow/NodeEditorDialog";
 import { ConfirmDialog } from "@/components/common";
 import { workflowApi, executionApi } from "@/api/workflow";
+import { filesystemApi } from "@/api/filesystem";
+import { FileManager } from "@/components/filesystem/FileManager";
+import { FileViewer } from "@/components/filesystem/FileViewer";
 
 const WorkflowDetail: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>();
   const navigate = useNavigate();
 
   // 状态管理
-  const [activeTab, setActiveTab] = useState<"node" | "flow" | "execution">(
-    "node",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "node" | "flow" | "execution" | "file"
+  >("node");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
+  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [showFileEditor, setShowFileEditor] = useState<boolean>(false);
   const [workflow, setWorkflow] = useState<any>({
     id: workflowId,
     name: "",
@@ -34,7 +40,7 @@ const WorkflowDetail: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalExecutions, setTotalExecutions] = useState<number>(0);
-  const [pageSize, setPageSize] = useState<number>(5);
+  const [pageSize] = useState<number>(5);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
@@ -50,6 +56,10 @@ const WorkflowDetail: React.FC = () => {
     isOpen: false,
     node: null,
   });
+  const [files, setFiles] = useState<any[]>([]);
+  const [allFiles, setAllFiles] = useState<any[]>([]);
+  const [filesLoading, setFilesLoading] = useState<boolean>(false);
+  const [workflowRootFolder, setWorkflowRootFolder] = useState<any>(null);
 
   // 确认框状态
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -148,9 +158,60 @@ const WorkflowDetail: React.FC = () => {
     }
   };
 
-  // 当工作流ID变化时，加载工作流基本数据
+  // 加载文件系统数据
+  const loadFileSystemData = async () => {
+    if (!workflowId) return;
+
+    try {
+      setFilesLoading(true);
+      // 获取所有文件
+      const allFilesData = await filesystemApi.getAllFiles(
+        parseInt(workflowId),
+      );
+      setAllFiles(allFilesData);
+
+      // 构建文件树结构
+      const fileMap: { [key: number]: any } = {};
+      let rootFolder: any = null;
+
+      // 首先创建所有文件的映射
+      allFilesData.forEach((file) => {
+        fileMap[file.id] = { ...file, children: [] };
+      });
+
+      // 然后构建文件树
+      allFilesData.forEach((file) => {
+        if (file.parent_id === null) {
+          // 根文件夹
+          rootFolder = fileMap[file.id];
+        } else {
+          // 子文件/文件夹
+          if (fileMap[file.parent_id]) {
+            fileMap[file.parent_id].children.push(fileMap[file.id]);
+          }
+        }
+      });
+
+      // 只显示根文件夹内的内容
+      if (rootFolder) {
+        // 保存根文件夹信息，用于显示在资源管理器标题中
+        setWorkflowRootFolder(rootFolder);
+        // 只显示根文件夹内的内容
+        setFiles(rootFolder.children || []);
+      } else {
+        setFiles([]);
+      }
+    } catch (err) {
+      console.error("Failed to load file system data:", err);
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+  // 当工作流ID变化时，加载工作流基本数据和文件系统数据
   useEffect(() => {
     loadWorkflowBasicData();
+    loadFileSystemData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId]);
 
@@ -524,6 +585,26 @@ const WorkflowDetail: React.FC = () => {
     }
   };
 
+  // 文件操作处理函数
+  const handleFileUpdate = async (fileId: number, content: string) => {
+    if (!workflowId) return;
+
+    try {
+      const updatedFile = await filesystemApi.updateFile(
+        parseInt(workflowId),
+        fileId,
+        {
+          content: content,
+        },
+      );
+      setSelectedFile(updatedFile);
+      // 刷新文件树
+      loadFileSystemData();
+    } catch (err) {
+      console.error("Failed to update file:", err);
+    }
+  };
+
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
 
   return (
@@ -595,10 +676,86 @@ const WorkflowDetail: React.FC = () => {
 
       {/* 主要内容 */}
       <main className="flex-1 flex">
-        {/* 左侧画布 */}
+        {/* 左侧文件系统 */}
+        <div className="w-64 border-r border-gray-200 bg-white">
+          <FileManager
+            onFileSelect={(file) => {
+              if (file) {
+                setSelectedFile(file);
+                setSelectedFileId(file.id);
+                setShowFileEditor(true);
+              } else {
+                setSelectedFile(null);
+                setSelectedFileId(null);
+              }
+            }}
+            selectedFile={selectedFile}
+            files={files}
+            allFiles={allFiles}
+            loading={filesLoading}
+            error={null}
+            rootFolderName={workflowRootFolder?.name}
+            createFile={async (fileData) => {
+              if (!workflowId) throw new Error("Workflow ID not found");
+              // 如果parent_id为null，使用根文件夹的ID作为parent_id
+              const fileDataWithParent = {
+                ...fileData,
+                parent_id: fileData.parent_id || workflowRootFolder?.id,
+              };
+              const createdFile = await filesystemApi.createFile(
+                parseInt(workflowId),
+                fileDataWithParent,
+              );
+              loadFileSystemData();
+              return createdFile;
+            }}
+            updateFile={async (fileId, fileData) => {
+              if (!workflowId) throw new Error("Workflow ID not found");
+              const updatedFile = await filesystemApi.updateFile(
+                parseInt(workflowId),
+                fileId,
+                fileData,
+              );
+              loadFileSystemData();
+              return updatedFile;
+            }}
+            deleteFile={async (fileId) => {
+              if (!workflowId) throw new Error("Workflow ID not found");
+              await filesystemApi.deleteFile(parseInt(workflowId), fileId);
+              loadFileSystemData();
+              if (selectedFileId === fileId) {
+                setSelectedFileId(null);
+                setSelectedFile(null);
+              }
+            }}
+          />
+        </div>
+
+        {/* 中间工作流画布 */}
         <div className="flex-1 p-6">
           <div className="bg-white rounded-lg shadow-md h-full">
-            {loading ? (
+            {showFileEditor && selectedFile ? (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    文件编辑区
+                  </h2>
+                  <button
+                    onClick={() => setShowFileEditor(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                  >
+                    返回流水线
+                  </button>
+                </div>
+                <div className="flex-1 p-4 overflow-auto">
+                  <FileViewer
+                    file={selectedFile}
+                    onSave={handleFileUpdate}
+                    loading={filesLoading}
+                  />
+                </div>
+              </div>
+            ) : loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-gray-500">加载中...</div>
               </div>
@@ -626,34 +783,52 @@ const WorkflowDetail: React.FC = () => {
         </div>
 
         {/* 右侧检查器 */}
-        <Inspector activeTab={activeTab} onTabChange={setActiveTab}>
-          {activeTab === "node" && (
-            <NodeConfig
-              node={selectedNode}
-              onNodeUpdate={handleNodeUpdate}
-              onDeleteNode={handleDeleteNode}
-            />
-          )}
-          {activeTab === "flow" && (
-            <FlowConfig
-              workflow={workflow}
-              onWorkflowUpdate={handleWorkflowUpdate}
-            />
-          )}
-          {activeTab === "execution" && (
-            <ExecutionStatus
-              executionId={execution?.id}
-              execution={execution}
-              logs={logs}
-              executions={executions}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalExecutions={totalExecutions}
-              onSelectExecution={handleSelectExecution}
-              onPageChange={handlePageChange}
-            />
-          )}
-        </Inspector>
+        <div className="w-80 border-l border-gray-200 bg-white">
+          <Inspector activeTab={activeTab} onTabChange={setActiveTab}>
+            {activeTab === "node" && (
+              <NodeConfig
+                node={selectedNode}
+                onNodeUpdate={handleNodeUpdate}
+                onDeleteNode={handleDeleteNode}
+              />
+            )}
+            {activeTab === "flow" && (
+              <FlowConfig
+                workflow={workflow}
+                onWorkflowUpdate={handleWorkflowUpdate}
+              />
+            )}
+            {activeTab === "execution" && (
+              <ExecutionStatus
+                executionId={execution?.id}
+                execution={execution}
+                logs={logs}
+                executions={executions}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalExecutions={totalExecutions}
+                onSelectExecution={handleSelectExecution}
+                onPageChange={handlePageChange}
+              />
+            )}
+            {activeTab === "file" && selectedFile && (
+              <div className="p-4 space-y-4">
+                <div>
+                  <h3 className="font-medium text-gray-700 mb-2">
+                    {selectedFile.name}
+                  </h3>
+                  <div className="text-sm text-gray-500 mb-4">
+                    类型: {selectedFile.type === "file" ? "文件" : "文件夹"} •
+                    大小: {selectedFile.size} 字节
+                  </div>
+                </div>
+                <div className="text-center py-8">
+                  <p className="text-gray-500">点击文件在中间查看内容</p>
+                </div>
+              </div>
+            )}
+          </Inspector>
+        </div>
       </main>
 
       {/* 节点选择器弹窗 */}

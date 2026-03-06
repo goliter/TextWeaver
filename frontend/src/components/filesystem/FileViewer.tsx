@@ -63,10 +63,10 @@ export function FileViewer({ file, onSave, loading = false }: FileViewerProps) {
 
   if (!file) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-900 text-gray-500">
+      <div className="h-full flex items-center justify-center bg-white text-gray-500">
         <div className="text-center">
           <svg
-            className="w-16 h-16 mx-auto mb-4 text-gray-600"
+            className="w-16 h-16 mx-auto mb-4 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -78,8 +78,8 @@ export function FileViewer({ file, onSave, loading = false }: FileViewerProps) {
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5l2 2h5a2 2 0 012 2v14a2 2 0 01-2 2z"
             />
           </svg>
-          <p className="text-lg">选择一个文件以查看内容</p>
-          <p className="text-sm mt-2 text-gray-600">
+          <p className="text-lg text-gray-700">选择一个文件以查看内容</p>
+          <p className="text-sm mt-2 text-gray-500">
             从左侧资源管理器中选择文件
           </p>
         </div>
@@ -89,11 +89,11 @@ export function FileViewer({ file, onSave, loading = false }: FileViewerProps) {
 
   return (
     <div
-      className="h-full flex flex-col bg-gray-900"
+      className="h-full flex flex-col bg-white"
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-200">
         <div className="flex items-center space-x-3 flex-1">
           <svg
             className="w-5 h-5 text-blue-400"
@@ -110,7 +110,7 @@ export function FileViewer({ file, onSave, loading = false }: FileViewerProps) {
             type="text"
             value={name}
             onChange={handleNameChange}
-            className="bg-transparent text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 flex-1"
+            className="bg-transparent text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1 flex-1"
             placeholder="文件名"
           />
           {hasChanges && (
@@ -125,7 +125,7 @@ export function FileViewer({ file, onSave, loading = false }: FileViewerProps) {
           <button
             onClick={handleSave}
             disabled={loading || !hasChanges}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 transition-colors flex items-center space-x-1"
+            className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:bg-indigo-800 disabled:opacity-50 transition-colors flex items-center space-x-1"
           >
             {loading ? (
               <>
@@ -172,7 +172,7 @@ export function FileViewer({ file, onSave, loading = false }: FileViewerProps) {
         </div>
       </div>
 
-      <div className="px-4 py-1 bg-gray-800 border-b border-gray-700 text-xs text-gray-500 flex items-center space-x-4">
+      <div className="px-4 py-1 bg-gray-100 border-b border-gray-200 text-xs text-gray-600 flex items-center space-x-4">
         <span>类型: {file.type}</span>
         <span>大小: {file.size} 字节</span>
         <span>
@@ -188,13 +188,13 @@ export function FileViewer({ file, onSave, loading = false }: FileViewerProps) {
         <textarea
           value={content}
           onChange={handleContentChange}
-          className="w-full h-full p-4 bg-gray-900 text-gray-300 font-mono text-sm resize-none focus:outline-none"
+          className="w-full h-full p-4 bg-white text-gray-800 font-mono text-sm resize-none focus:outline-none border-b border-gray-200"
           placeholder="在此输入文件内容..."
           spellCheck={false}
         />
       </div>
 
-      <div className="px-4 py-1 bg-blue-600 text-white text-xs flex items-center justify-between">
+      <div className="px-4 py-1 bg-gray-100 text-gray-600 text-xs flex items-center justify-between border-t border-gray-200">
         <div className="flex items-center space-x-4">
           <span>行数: {content.split("\n").length}</span>
           <span>字符数: {content.length}</span>

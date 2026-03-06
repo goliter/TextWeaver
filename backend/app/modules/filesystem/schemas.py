@@ -12,7 +12,6 @@ class FileType(str, Enum):
 class FileBase(BaseModel):
     name: str
     type: FileType = FileType.FILE
-    path: str
     content: Optional[str] = None
 
 
@@ -30,10 +29,9 @@ class FileResponse(BaseModel):
     id: int
     name: str
     type: FileType
-    path: str
     content: Optional[str] = None
     size: int
-    user_id: int
+    flow_id: int
     parent_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None

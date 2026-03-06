@@ -19,6 +19,13 @@ const FilesystemTest: React.FC = () => {
         <FileManager
           onFileSelect={setSelectedFile}
           selectedFile={selectedFile}
+          files={[]}
+          allFiles={[]}
+          loading={loading}
+          error={null}
+          createFile={async () => ({}) as FileResponse}
+          updateFile={async () => ({}) as FileResponse}
+          deleteFile={async () => {}}
         />
       </div>
 

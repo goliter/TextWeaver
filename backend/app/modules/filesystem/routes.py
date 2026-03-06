@@ -4,19 +4,51 @@ from typing import Optional, List, Union
 from app.modules.filesystem import schemas, crud, models
 from app.modules.auth.models import User
 from app.modules.auth.jwt import get_current_active_user
+from app.modules.workflow import crud as workflow_crud
 from app.core.database import get_db
 
 
 
-router = APIRouter(prefix="/filesystem", tags=["filesystem"])
+router = APIRouter(prefix="/flows/{flow_id}/files", tags=["filesystem"])
 
 
-@router.get("/files", response_model=List[schemas.FileResponse])
+def verify_flow_ownership(db: Session, flow_id: int, user_id: int):
+    """验证工作流是否存在且属于当前用户"""
+    flow = workflow_crud.get_flow(db, flow_id=flow_id, user_id=user_id)
+    if not flow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workflow not found"
+        )
+    return flow
+
+
+def build_file_tree(files: List[models.File]) -> List[schemas.FileWithChildren]:
+    """构建文件树结构"""
+    file_map = {file.id: schemas.FileWithChildren.model_validate(file) for file in files}
+    root_files = []
+    
+    for file_id, file in file_map.items():
+        if file.parent_id is None:
+            root_files.append(file)
+        else:
+            parent_file = file_map.get(file.parent_id)
+            if parent_file:
+                parent_file.children.append(file)
+    
+    return root_files
+
+
+@router.get("", response_model=List[schemas.FileResponse])
 def get_files(
+    flow_id: int,
     parent_id: Optional[Union[int, str]] = Query(None, description="父文件夹ID，None表示根目录"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    # 验证工作流所有权
+    verify_flow_ownership(db, flow_id, current_user.id)
+    
     parsed_parent_id = None
     if parent_id is not None:
         if isinstance(parent_id, str):
@@ -28,31 +60,54 @@ def get_files(
                 except ValueError:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="parent_id must be an integer or 'none'"
-                    )
+                        detail="parent_id must be an integer or 'none'")
         else:
             parsed_parent_id = parent_id
     
-    files = crud.get_files_by_parent_id(db, parsed_parent_id, current_user.id)
+    files = crud.get_files_by_parent_id(db, parsed_parent_id, flow_id)
     return files
 
 
-@router.get("/files/all", response_model=List[schemas.FileResponse])
-def get_all_files(
+@router.get("/tree", response_model=List[schemas.FileWithChildren])
+def get_file_tree(
+    flow_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    files = crud.get_all_files(db, current_user.id)
+    # 验证工作流所有权
+    verify_flow_ownership(db, flow_id, current_user.id)
+    
+    # 获取所有文件
+    files = crud.get_all_files(db, flow_id)
+    # 构建文件树
+    file_tree = build_file_tree(files)
+    return file_tree
+
+
+@router.get("/all", response_model=List[schemas.FileResponse])
+def get_all_files(
+    flow_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    # 验证工作流所有权
+    verify_flow_ownership(db, flow_id, current_user.id)
+    
+    files = crud.get_all_files(db, flow_id)
     return files
 
 
-@router.get("/files/{file_id}", response_model=schemas.FileResponse)
+@router.get("/{file_id}", response_model=schemas.FileResponse)
 def get_file(
+    flow_id: int,
     file_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    file = crud.get_file_by_id(db, file_id, current_user.id)
+    # 验证工作流所有权
+    verify_flow_ownership(db, flow_id, current_user.id)
+    
+    file = crud.get_file_by_id(db, file_id, flow_id)
     if not file:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -61,30 +116,19 @@ def get_file(
     return file
 
 
-@router.get("/files/path/{path:path}", response_model=schemas.FileResponse)
-def get_file_by_path(
-    path: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    file = crud.get_file_by_path(db, path, current_user.id)
-    if not file:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found"
-        )
-    return file
-
-
-@router.post("/files", response_model=schemas.FileResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=schemas.FileResponse, status_code=status.HTTP_201_CREATED)
 def create_file(
+    flow_id: int,
     file: schemas.FileCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    # 验证工作流所有权
+    verify_flow_ownership(db, flow_id, current_user.id)
+    
     # 检查同一目录下是否有同名文件/文件夹
     existing_file = crud.get_file_by_name_and_parent(
-        db, file.name, file.parent_id, current_user.id
+        db, file.name, file.parent_id, flow_id
     )
     if existing_file:
         raise HTTPException(
@@ -93,25 +137,29 @@ def create_file(
         )
     
     if file.parent_id is not None:
-        parent_file = crud.get_file_by_id(db, file.parent_id, current_user.id)
+        parent_file = crud.get_file_by_id(db, file.parent_id, flow_id)
         if not parent_file or parent_file.type != models.FileType.FOLDER:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Parent folder not found or not a folder"
             )
     
-    return crud.create_file(db, file, current_user.id)
+    return crud.create_file(db, file, flow_id)
 
 
-@router.put("/files/{file_id}", response_model=schemas.FileResponse)
+@router.put("/{file_id}", response_model=schemas.FileResponse)
 def update_file(
+    flow_id: int,
     file_id: int,
     file_update: schemas.FileUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    # 验证工作流所有权
+    verify_flow_ownership(db, flow_id, current_user.id)
+    
     try:
-        updated_file = crud.update_file(db, file_id, file_update, current_user.id)
+        updated_file = crud.update_file(db, file_id, file_update, flow_id)
         if not updated_file:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -125,14 +173,18 @@ def update_file(
         )
 
 
-@router.delete("/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_file(
+    flow_id: int,
     file_id: int,
     recursive: bool = Query(False, description="是否递归删除子文件/文件夹"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    file = crud.get_file_by_id(db, file_id, current_user.id)
+    # 验证工作流所有权
+    verify_flow_ownership(db, flow_id, current_user.id)
+    
+    file = crud.get_file_by_id(db, file_id, flow_id)
     if not file:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -140,9 +192,9 @@ def delete_file(
         )
     
     if recursive and file.type == models.FileType.FOLDER:
-        crud.delete_files_by_parent_id(db, file_id, current_user.id)
+        crud.delete_files_by_parent_id(db, file_id, flow_id)
     
-    success = crud.delete_file(db, file_id, current_user.id)
+    success = crud.delete_file(db, file_id, flow_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

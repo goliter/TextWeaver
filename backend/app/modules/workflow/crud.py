@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import List, Optional
 from app.modules.workflow import models, schemas
+from app.modules.filesystem import crud as filesystem_crud
 
 
 # ==================== Flow CRUD ====================
@@ -31,6 +32,10 @@ def create_flow(db: Session, flow: schemas.FlowCreate, user_id: int) -> models.F
     db.add(db_flow)
     db.commit()
     db.refresh(db_flow)
+    
+    # 为新工作流创建根目录，使用工作流名称作为文件夹名称
+    filesystem_crud.create_root_folder(db, db_flow.id, db_flow.name)
+    
     return db_flow
 
 
@@ -44,6 +49,7 @@ def update_flow(db: Session, flow_id: int, flow_update: schemas.FlowUpdate, user
     if not db_flow:
         return None
     
+    old_name = db_flow.name
     if flow_update.name is not None:
         db_flow.name = flow_update.name
     if flow_update.description is not None:
@@ -51,6 +57,21 @@ def update_flow(db: Session, flow_id: int, flow_update: schemas.FlowUpdate, user
     
     db.commit()
     db.refresh(db_flow)
+    
+    # 如果工作流名称发生变化，更新根文件夹名称
+    if flow_update.name is not None and flow_update.name != old_name:
+        # 查找根文件夹
+        root_folder = db.query(models.File).filter(
+            models.File.flow_id == flow_id,
+            models.File.parent_id.is_(None),
+            models.File.type == models.FileType.FOLDER
+        ).first()
+        
+        if root_folder:
+            root_folder.name = flow_update.name
+            db.commit()
+            db.refresh(root_folder)
+    
     return db_flow
 
 

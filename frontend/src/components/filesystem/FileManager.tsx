@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useFilesystemStore } from "@/store/filesystemStore";
 import type { FileResponse } from "@/types/filesystem";
 import { FileType } from "@/types/filesystem";
 
@@ -10,7 +9,7 @@ interface FileTreeItemProps {
   selectedFileId: number | null;
   onToggleFolder: (folderId: number) => void;
   onSelectFile: (file: FileResponse) => void;
-  onDelete: (fileId: number, isFolder: boolean) => void;
+  onDelete: (fileId: number) => void;
   onContextMenu: (e: React.MouseEvent, file: FileResponse) => void;
   allFiles: FileResponse[];
 }
@@ -108,10 +107,10 @@ function FileTreeItem({
         draggable={true}
         className={`flex items-center py-1 px-2 cursor-pointer select-none group ${
           isSelected
-            ? "bg-blue-600 text-white"
+            ? "bg-indigo-600 text-white"
             : isDragOver
-              ? "bg-blue-900/50 text-blue-300"
-              : "hover:bg-gray-700 text-gray-300"
+              ? "bg-indigo-100 text-indigo-800"
+              : "hover:bg-gray-100 text-gray-800"
         }`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
@@ -134,7 +133,7 @@ function FileTreeItem({
         <span className="mr-2">
           {isFolder ? (
             <svg
-              className={`w-4 h-4 ${isExpanded ? "text-yellow-400" : "text-yellow-500"}`}
+              className={`w-4 h-4 ${isExpanded ? "text-indigo-400" : "text-indigo-600"}`}
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -142,7 +141,7 @@ function FileTreeItem({
             </svg>
           ) : (
             <svg
-              className="w-4 h-4 text-blue-400"
+              className="w-4 h-4 text-blue-600"
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -160,10 +159,10 @@ function FileTreeItem({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(file.id, isFolder);
+            onDelete(file.id);
           }}
           className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity ${
-            isSelected ? "hover:bg-blue-500" : "hover:bg-gray-600"
+            isSelected ? "hover:bg-indigo-500" : "hover:bg-gray-200"
           }`}
           title="删除"
         >
@@ -214,18 +213,28 @@ function FileTreeItem({
 interface FileManagerProps {
   onFileSelect: (file: FileResponse | null) => void;
   selectedFile: FileResponse | null;
+  files: FileResponse[];
+  allFiles: FileResponse[];
+  loading: boolean;
+  error: string | null;
+  rootFolderName?: string;
+  createFile: (fileData: any) => Promise<FileResponse>;
+  updateFile: (fileId: number, fileData: any) => Promise<FileResponse>;
+  deleteFile: (fileId: number) => Promise<void>;
 }
 
-export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
-  const {
-    files,
-    loading,
-    error,
-    loadAllFiles,
-    deleteFile,
-    createFile,
-    updateFile,
-  } = useFilesystemStore();
+export function FileManager({
+  onFileSelect,
+  selectedFile,
+  files,
+  allFiles,
+  loading,
+  error,
+  rootFolderName,
+  createFile,
+  updateFile,
+  deleteFile,
+}: FileManagerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<number>>(
     new Set(),
   );
@@ -244,7 +253,6 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
   // 删除确认相关状态
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteFileId, setDeleteFileId] = useState<number | null>(null);
-  const [deleteIsFolder, setDeleteIsFolder] = useState(false);
 
   // 拖拽相关状态
   const [draggedFile, setDraggedFile] = useState<FileResponse | null>(null);
@@ -264,10 +272,6 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
     file: FileResponse;
   } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    loadAllFiles();
-  }, []);
 
   // 点击其他地方关闭右键菜单
   useEffect(() => {
@@ -300,8 +304,8 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
     [onFileSelect],
   );
 
-  const handleDelete = (fileId: number, isFolder: boolean) => {
-    openDeleteModal(fileId, isFolder);
+  const handleDelete = (fileId: number) => {
+    openDeleteModal(fileId);
   };
 
   const handleContextMenu = useCallback(
@@ -344,7 +348,6 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
       const newFile = await createFile({
         name: newItemName.trim(),
         type: createType,
-        path: newItemName.trim(),
         parent_id: createParentId ?? undefined,
       });
 
@@ -384,9 +387,8 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
     }
   };
 
-  const openDeleteModal = (fileId: number, isFolder: boolean) => {
+  const openDeleteModal = (fileId: number) => {
     setDeleteFileId(fileId);
-    setDeleteIsFolder(isFolder);
     setShowDeleteModal(true);
     setContextMenu(null);
   };
@@ -395,7 +397,7 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
     if (!deleteFileId) return;
 
     try {
-      await deleteFile(deleteFileId, deleteIsFolder);
+      await deleteFile(deleteFileId);
       if (selectedFile?.id === deleteFileId) {
         onFileSelect(null);
       }
@@ -455,25 +457,23 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
     setDraggedFile(null);
   };
 
-  const rootFiles = files
-    .filter((f) => f.parent_id === null)
-    .sort((a, b) => {
-      // 文件夹排在文件前面
-      if (a.type === FileType.FOLDER && b.type !== FileType.FOLDER) {
-        return -1;
-      }
-      if (a.type !== FileType.FOLDER && b.type === FileType.FOLDER) {
-        return 1;
-      }
-      // 同类型按名称字母排序
-      return a.name.localeCompare(b.name);
-    });
+  const rootFiles = files.sort((a, b) => {
+    // 文件夹排在文件前面
+    if (a.type === FileType.FOLDER && b.type !== FileType.FOLDER) {
+      return -1;
+    }
+    if (a.type !== FileType.FOLDER && b.type === FileType.FOLDER) {
+      return 1;
+    }
+    // 同类型按名称字母排序
+    return a.name.localeCompare(b.name);
+  });
 
   return (
-    <div className="h-full flex flex-col bg-gray-800 text-gray-300 relative">
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-900 border-b border-gray-700">
+    <div className="h-full flex flex-col bg-white text-gray-800 relative">
+      <div className="flex items-center justify-between px-3 py-2 bg-gray-100 border-b border-gray-200">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-          资源管理器
+          资源管理器 - {rootFolderName || "根目录"}
         </span>
         <div className="flex space-x-1">
           <button
@@ -541,7 +541,7 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
               onSelectFile={handleSelectFile}
               onDelete={handleDelete}
               onContextMenu={handleContextMenu}
-              allFiles={files}
+              allFiles={allFiles}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -557,14 +557,14 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
       {contextMenu && (
         <div
           ref={menuRef}
-          className="fixed bg-gray-700 border border-gray-600 rounded shadow-lg py-1 z-50 min-w-[150px]"
+          className="fixed bg-white border border-gray-200 rounded shadow-lg py-1 z-50 min-w-[150px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <button
             onClick={() => {
               openRenameModal(contextMenu.file);
             }}
-            className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 hover:text-white flex items-center space-x-2"
+            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center space-x-2"
           >
             <svg
               className="w-4 h-4"
@@ -583,12 +583,12 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
           </button>
           {contextMenu.file.type === FileType.FOLDER && (
             <>
-              <div className="border-t border-gray-600 my-1" />
+              <div className="border-t border-gray-200 my-1" />
               <button
                 onClick={() =>
                   openCreateModal(FileType.FILE, contextMenu.file.id)
                 }
-                className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 hover:text-white flex items-center space-x-2"
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center space-x-2"
               >
                 <svg
                   className="w-4 h-4"
@@ -609,7 +609,7 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
                 onClick={() =>
                   openCreateModal(FileType.FOLDER, contextMenu.file.id)
                 }
-                className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 hover:text-white flex items-center space-x-2"
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center space-x-2"
               >
                 <svg
                   className="w-4 h-4"
@@ -628,16 +628,13 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
               </button>
             </>
           )}
-          <div className="border-t border-gray-600 my-1" />
+          <div className="border-t border-gray-200 my-1" />
           <button
             onClick={() => {
-              handleDelete(
-                contextMenu.file.id,
-                contextMenu.file.type === FileType.FOLDER,
-              );
+              handleDelete(contextMenu.file.id);
               setContextMenu(null);
             }}
-            className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-gray-600 hover:text-red-300 flex items-center space-x-2"
+            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center space-x-2"
           >
             <svg
               className="w-4 h-4"
@@ -757,11 +754,7 @@ export function FileManager({ onFileSelect, selectedFile }: FileManagerProps) {
           <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-md mx-4 p-6 border border-gray-700">
             <h3 className="text-lg font-bold text-white mb-4">确认删除</h3>
 
-            <p className="text-gray-300 mb-6">
-              {deleteIsFolder
-                ? "确定要删除此文件夹吗？"
-                : "确定要删除此文件吗？"}
-            </p>
+            <p className="text-gray-300 mb-6">确定要删除此项目吗？</p>
 
             <div className="flex justify-end space-x-3">
               <button

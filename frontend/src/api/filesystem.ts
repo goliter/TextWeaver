@@ -2,44 +2,50 @@ import api from "./client";
 import type { FileCreate, FileUpdate, FileResponse } from "../types/filesystem";
 
 export const filesystemApi = {
-  getFiles: async (parentId?: number): Promise<FileResponse[]> => {
-    const response = await api.get<FileResponse[]>("/filesystem/files", {
+  getFileTree: async (flowId: number): Promise<FileResponse[]> => {
+    const response = await api.get<FileResponse[]>(`/flows/${flowId}/files/tree`);
+    return response.data;
+  },
+
+  getFiles: async (flowId: number, parentId?: number): Promise<FileResponse[]> => {
+    const response = await api.get<FileResponse[]>(`/flows/${flowId}/files`, {
       params: parentId !== undefined ? { parent_id: parentId } : undefined,
     });
     return response.data;
   },
 
-  getAllFiles: async (): Promise<FileResponse[]> => {
-    const response = await api.get<FileResponse[]>("/filesystem/files/all");
+  getAllFiles: async (flowId: number): Promise<FileResponse[]> => {
+    const response = await api.get<FileResponse[]>(`/flows/${flowId}/files/all`);
     return response.data;
   },
 
-  getFile: async (fileId: number): Promise<FileResponse> => {
-    const response = await api.get<FileResponse>(`/filesystem/files/${fileId}`);
+  getFile: async (flowId: number, fileId: number): Promise<FileResponse> => {
+    const response = await api.get<FileResponse>(`/flows/${flowId}/files/${fileId}`);
     return response.data;
   },
 
-  createFile: async (fileData: FileCreate): Promise<FileResponse> => {
+  createFile: async (flowId: number, fileData: FileCreate): Promise<FileResponse> => {
     const response = await api.post<FileResponse>(
-      "/filesystem/files",
+      `/flows/${flowId}/files`,
       fileData,
     );
     return response.data;
   },
 
   updateFile: async (
+    flowId: number,
     fileId: number,
     fileData: FileUpdate,
   ): Promise<FileResponse> => {
     const response = await api.put<FileResponse>(
-      `/filesystem/files/${fileId}`,
+      `/flows/${flowId}/files/${fileId}`,
       fileData,
     );
     return response.data;
   },
 
-  deleteFile: async (fileId: number, recursive?: boolean): Promise<void> => {
-    await api.delete(`/filesystem/files/${fileId}`, {
+  deleteFile: async (flowId: number, fileId: number, recursive?: boolean): Promise<void> => {
+    await api.delete(`/flows/${flowId}/files/${fileId}`, {
       params: recursive !== undefined ? { recursive } : undefined,
     });
   },

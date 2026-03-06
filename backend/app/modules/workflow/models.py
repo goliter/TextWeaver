@@ -16,9 +16,11 @@ class Flow(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # 关系
+    user = relationship("User", back_populates="flows")
     nodes = relationship("Node", back_populates="flow", cascade="all, delete-orphan")
     edges = relationship("Edge", back_populates="flow", cascade="all, delete-orphan")
-    executions = relationship("Execution", back_populates="flow")
+    executions = relationship("Execution", back_populates="flow", cascade="all, delete-orphan")
+    files = relationship("File", back_populates="flow", cascade="all, delete-orphan")
 
 
 class Node(Base):

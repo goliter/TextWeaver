@@ -25,8 +25,8 @@ class ExecutionEngine:
             "start": StartNodeExecutor(),
             "end": EndNodeExecutor(),
             "ai": AINodeExecutor(),
-            "file_reader": FileReaderNodeExecutor(),
-            "file_writer": FileWriterNodeExecutor()
+            "file_reader": FileReaderNodeExecutor(db),
+            "file_writer": FileWriterNodeExecutor(db)
         }
     
     def execute_workflow(self, flow_id: int, user_id: int, inputs: Dict[str, Any] = None) -> models.Execution:
