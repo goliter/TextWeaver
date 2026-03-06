@@ -71,8 +71,17 @@ function FileTreeItem({
   };
 
   const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.effectAllowed = "copy";
     e.dataTransfer.setData("text/plain", file.id.toString());
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({
+        id: file.id,
+        name: file.name,
+        type: file.type,
+        path: file.path,
+      }),
+    );
     onDragStart(file);
   };
 

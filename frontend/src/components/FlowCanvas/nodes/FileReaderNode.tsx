@@ -1,10 +1,13 @@
 import React from "react";
 import { Handle, Position, type Node } from "@xyflow/react";
 
-type FileReaderNodeProps = Node<Node<any>, "file_reader">;
+type FileReaderNodeProps = Node<
+  { label?: string; name?: string; filePath?: string; encoding?: string },
+  "file_reader"
+>;
 
 const FileReaderNode: React.FC<FileReaderNodeProps> = ({ selected, data }) => {
-  const nodeName = data?.name || "文件读取";
+  const nodeName = data?.label || "文件读取";
 
   return (
     <div
@@ -21,6 +24,14 @@ const FileReaderNode: React.FC<FileReaderNodeProps> = ({ selected, data }) => {
       <div className="mt-1 text-xs text-gray-600 truncate" title={nodeName}>
         {nodeName}
       </div>
+      {data?.filePath && (
+        <div
+          className="mt-1 text-xs text-gray-500 truncate"
+          title={data.filePath}
+        >
+          {data.filePath}
+        </div>
+      )}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

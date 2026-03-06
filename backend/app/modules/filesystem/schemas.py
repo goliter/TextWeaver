@@ -35,6 +35,7 @@ class FileResponse(BaseModel):
     parent_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    path: str = ""
     
     class Config:
         from_attributes = True

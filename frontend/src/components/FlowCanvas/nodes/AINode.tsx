@@ -1,10 +1,13 @@
 import React from "react";
 import { Handle, Position, type Node } from "@xyflow/react";
 
-type AINodeProps = Node<Node<any>, "ai">;
+type AINodeProps = Node<
+  { label?: string; name?: string; model?: string; prompt?: string },
+  "ai"
+>;
 
 const AINode: React.FC<AINodeProps> = ({ selected, data }) => {
-  const nodeName = data?.name || "AI";
+  const nodeName = data?.label || "AI";
 
   return (
     <div

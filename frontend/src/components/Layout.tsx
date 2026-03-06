@@ -27,12 +27,6 @@ const Layout: React.FC = () => {
       icon: "⚙️",
     },
     {
-      id: "filesystem",
-      label: "文件系统",
-      path: "/dashboard/filesystem",
-      icon: "📁",
-    },
-    {
       id: "template-library",
       label: "模板库",
       path: "/dashboard/template-library",

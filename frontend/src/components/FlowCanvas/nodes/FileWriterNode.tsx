@@ -1,10 +1,19 @@
 import React from "react";
 import { Handle, Position, type Node } from "@xyflow/react";
 
-type FileWriterNodeProps = Node<Node<any>, "file_writer">;
+type FileWriterNodeProps = Node<
+  {
+    label?: string;
+    name?: string;
+    filePath?: string;
+    encoding?: string;
+    overwrite?: boolean;
+  },
+  "file_writer"
+>;
 
 const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected, data }) => {
-  const nodeName = data?.name || "文件写入";
+  const nodeName = data?.label || "文件写入";
 
   return (
     <div
@@ -21,6 +30,14 @@ const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected, data }) => {
       <div className="mt-1 text-xs text-gray-600 truncate" title={nodeName}>
         {nodeName}
       </div>
+      {data?.filePath && (
+        <div
+          className="mt-1 text-xs text-gray-500 truncate"
+          title={data.filePath}
+        >
+          {data.filePath}
+        </div>
+      )}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

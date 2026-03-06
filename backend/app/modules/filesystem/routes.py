@@ -23,6 +23,18 @@ def verify_flow_ownership(db: Session, flow_id: int, user_id: int):
     return flow
 
 
+def generate_file_path(db: Session, file: models.File) -> str:
+    """生成文件的路径"""
+    path_parts = []
+    current_file = file
+    
+    while current_file:
+        path_parts.insert(0, current_file.name)
+        current_file = current_file.parent
+    
+    return "/" + "/".join(path_parts)
+
+
 def build_file_tree(files: List[models.File]) -> List[schemas.FileWithChildren]:
     """构建文件树结构"""
     file_map = {file.id: schemas.FileWithChildren.model_validate(file) for file in files}
@@ -65,6 +77,9 @@ def get_files(
             parsed_parent_id = parent_id
     
     files = crud.get_files_by_parent_id(db, parsed_parent_id, flow_id)
+    # 生成文件路径
+    for file in files:
+        file.path = generate_file_path(db, file)
     return files
 
 
@@ -79,6 +94,9 @@ def get_file_tree(
     
     # 获取所有文件
     files = crud.get_all_files(db, flow_id)
+    # 生成文件路径
+    for file in files:
+        file.path = generate_file_path(db, file)
     # 构建文件树
     file_tree = build_file_tree(files)
     return file_tree
@@ -94,6 +112,9 @@ def get_all_files(
     verify_flow_ownership(db, flow_id, current_user.id)
     
     files = crud.get_all_files(db, flow_id)
+    # 生成文件路径
+    for file in files:
+        file.path = generate_file_path(db, file)
     return files
 
 
@@ -113,6 +134,8 @@ def get_file(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found"
         )
+    # 生成文件路径
+    file.path = generate_file_path(db, file)
     return file
 
 
@@ -144,7 +167,10 @@ def create_file(
                 detail="Parent folder not found or not a folder"
             )
     
-    return crud.create_file(db, file, flow_id)
+    created_file = crud.create_file(db, file, flow_id)
+    # 生成文件路径
+    created_file.path = generate_file_path(db, created_file)
+    return created_file
 
 
 @router.put("/{file_id}", response_model=schemas.FileResponse)
@@ -165,6 +191,8 @@ def update_file(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="File not found"
             )
+        # 生成文件路径
+        updated_file.path = generate_file_path(db, updated_file)
         return updated_file
     except ValueError as e:
         raise HTTPException(

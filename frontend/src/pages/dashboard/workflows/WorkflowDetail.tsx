@@ -25,6 +25,12 @@ const WorkflowDetail: React.FC = () => {
   const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [showFileEditor, setShowFileEditor] = useState<boolean>(false);
+  const [showFileNodeDialog, setShowFileNodeDialog] = useState<boolean>(false);
+  const [droppedFileData, setDroppedFileData] = useState<any>(null);
+  const [droppedFilePosition, setDroppedFilePosition] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
   const [workflow, setWorkflow] = useState<any>({
     id: workflowId,
     name: "",
@@ -181,12 +187,14 @@ const WorkflowDetail: React.FC = () => {
 
       // 然后构建文件树
       allFilesData.forEach((file) => {
-        if (file.parent_id === null) {
-          // 根文件夹
-          rootFolder = fileMap[file.id];
+        if (file.parent_id === null && file.type === "folder") {
+          // 根文件夹 - 确保只设置一次，避免被其他文件覆盖
+          if (!rootFolder) {
+            rootFolder = fileMap[file.id];
+          }
         } else {
           // 子文件/文件夹
-          if (fileMap[file.parent_id]) {
+          if (file.parent_id !== null && fileMap[file.parent_id]) {
             fileMap[file.parent_id].children.push(fileMap[file.id]);
           }
         }
@@ -390,12 +398,27 @@ const WorkflowDetail: React.FC = () => {
     }
   };
 
-  const handleAddNode = (position: { x: number; y: number }) => {
-    setNewNodePosition(position);
-    setShowAddNodeDialog(true);
+  const handleAddNode = (
+    position: { x: number; y: number },
+    fileData?: any,
+  ) => {
+    if (fileData) {
+      // 如果有文件数据，显示文件节点类型选择对话框
+      setDroppedFileData(fileData);
+      setDroppedFilePosition(position);
+      setShowFileNodeDialog(true);
+    } else {
+      // 否则显示节点创建对话框
+      setNewNodePosition(position);
+      setShowAddNodeDialog(true);
+    }
   };
 
-  const handleCreateNode = async (nodeType: string) => {
+  const handleCreateNode = async (
+    nodeType: string,
+    fileData?: any,
+    position?: { x: number; y: number },
+  ) => {
     if (!workflowId) return;
 
     try {
@@ -409,13 +432,13 @@ const WorkflowDetail: React.FC = () => {
 
       const nodeData: any = {
         node_type: backendNodeType,
-        name: getNodeLabel(nodeType),
-        position: {
+        name: fileData?.name || getNodeLabel(nodeType),
+        position: position || {
           x: newNodePosition.x,
           y: newNodePosition.y,
         },
         data: {
-          label: getNodeLabel(nodeType),
+          label: fileData?.name || getNodeLabel(nodeType),
         },
       };
 
@@ -428,10 +451,10 @@ const WorkflowDetail: React.FC = () => {
         nodeData.data.model = "gpt-3.5-turbo";
         nodeData.data.prompt = "请总结以下内容: {{input}}";
       } else if (nodeType === "fileReader") {
-        nodeData.data.filePath = "";
+        nodeData.data.filePath = fileData?.path || "";
         nodeData.data.encoding = "utf-8";
       } else if (nodeType === "fileWriter") {
-        nodeData.data.filePath = "";
+        nodeData.data.filePath = fileData?.path || "";
         nodeData.data.encoding = "utf-8";
         nodeData.data.overwrite = false;
       }
@@ -605,7 +628,9 @@ const WorkflowDetail: React.FC = () => {
     }
   };
 
-  const selectedNode = nodes.find((node) => node.id === selectedNodeId);
+  const selectedNode = selectedNodeId
+    ? nodes.find((node) => node.id === selectedNodeId)
+    : null;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col">
@@ -726,6 +751,7 @@ const WorkflowDetail: React.FC = () => {
               if (selectedFileId === fileId) {
                 setSelectedFileId(null);
                 setSelectedFile(null);
+                setShowFileEditor(false);
               }
             }}
           />
@@ -864,6 +890,52 @@ const WorkflowDetail: React.FC = () => {
         }}
         onCancel={() => setNodeEditor({ isOpen: false, node: null })}
       />
+
+      {/* 文件节点类型选择对话框 */}
+      {showFileNodeDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              创建文件节点
+            </h3>
+            <p className="text-gray-600 mb-6">请选择要创建的文件节点类型：</p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  handleCreateNode(
+                    "fileReader",
+                    droppedFileData,
+                    droppedFilePosition,
+                  );
+                  setShowFileNodeDialog(false);
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                文件读取节点
+              </button>
+              <button
+                onClick={() => {
+                  handleCreateNode(
+                    "fileWriter",
+                    droppedFileData,
+                    droppedFilePosition,
+                  );
+                  setShowFileNodeDialog(false);
+                }}
+                className="w-full px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+              >
+                文件写入节点
+              </button>
+              <button
+                onClick={() => setShowFileNodeDialog(false)}
+                className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

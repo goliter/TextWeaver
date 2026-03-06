@@ -29,8 +29,10 @@ const NodeConfig: React.FC<NodeConfigProps> = ({
       case "ai":
         return "AI 节点";
       case "fileReader":
+      case "file_reader":
         return "文件读取节点";
       case "fileWriter":
+      case "file_writer":
         return "文件写入节点";
       case "input":
         return "输入节点";
@@ -86,7 +88,7 @@ const NodeConfig: React.FC<NodeConfigProps> = ({
       )}
 
       {/* 文件读取节点特定信息 */}
-      {node.type === "fileReader" && (
+      {(node.type === "fileReader" || node.type === "file_reader") && (
         <div className="space-y-3 pt-3 border-t border-gray-200">
           {renderReadOnlyField("文件路径", node.data?.filePath || "-")}
           {renderReadOnlyField("编码", node.data?.encoding || "utf-8")}
@@ -94,7 +96,7 @@ const NodeConfig: React.FC<NodeConfigProps> = ({
       )}
 
       {/* 文件写入节点特定信息 */}
-      {node.type === "fileWriter" && (
+      {(node.type === "fileWriter" || node.type === "file_writer") && (
         <div className="space-y-3 pt-3 border-t border-gray-200">
           {renderReadOnlyField("文件路径", node.data?.filePath || "-")}
           {renderReadOnlyField("编码", node.data?.encoding || "utf-8")}

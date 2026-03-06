@@ -44,8 +44,10 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
           {node.type === "input" && "编辑输入节点"}
           {node.type === "output" && "编辑输出节点"}
           {node.type === "ai" && "编辑 AI 节点"}
-          {node.type === "fileReader" && "编辑文件读取节点"}
-          {node.type === "fileWriter" && "编辑文件写入节点"}
+          {(node.type === "fileReader" || node.type === "file_reader") &&
+            "编辑文件读取节点"}
+          {(node.type === "fileWriter" || node.type === "file_writer") &&
+            "编辑文件写入节点"}
         </h3>
         <p className="text-sm text-gray-500 mb-6">编辑节点的详细配置</p>
 
@@ -153,7 +155,7 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
             </div>
           )}
 
-          {node.type === "fileReader" && (
+          {(node.type === "fileReader" || node.type === "file_reader") && (
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -168,19 +170,37 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  文件路径
+                  文件路径 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.filePath || ""}
                   onChange={(e) => handleChange("filePath", e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="请输入文件路径，例如：/data/example.txt"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  文件路径是相对于工作流根目录的路径
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  编码格式
+                </label>
+                <select
+                  value={formData.encoding || "utf-8"}
+                  onChange={(e) => handleChange("encoding", e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="utf-8">UTF-8</option>
+                  <option value="gbk">GBK</option>
+                  <option value="ascii">ASCII</option>
+                </select>
               </div>
             </div>
           )}
 
-          {node.type === "fileWriter" && (
+          {(node.type === "fileWriter" || node.type === "file_writer") && (
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -195,14 +215,47 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  文件路径
+                  文件路径 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.filePath || ""}
                   onChange={(e) => handleChange("filePath", e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="请输入文件路径，例如：/data/output.txt"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  文件路径是相对于工作流根目录的路径
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  编码格式
+                </label>
+                <select
+                  value={formData.encoding || "utf-8"}
+                  onChange={(e) => handleChange("encoding", e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="utf-8">UTF-8</option>
+                  <option value="gbk">GBK</option>
+                  <option value="ascii">ASCII</option>
+                </select>
+              </div>
+              <div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.overwrite || false}
+                    onChange={(e) =>
+                      handleChange("overwrite", e.target.checked)
+                    }
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 block text-sm text-gray-700">
+                    覆盖现有文件
+                  </span>
+                </label>
               </div>
             </div>
           )}

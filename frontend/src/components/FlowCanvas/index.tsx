@@ -3,7 +3,6 @@ import {
   ReactFlow,
   applyNodeChanges,
   applyEdgeChanges,
-  addEdge,
   Background,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -21,7 +20,7 @@ interface FlowCanvasProps {
   onNodesChange: (nodes: any[]) => void;
   onEdgesChange: (edges: any[]) => void;
   onNodeSelect: (nodeId: string) => void;
-  onAddNode: (position: { x: number; y: number }) => void;
+  onAddNode: (position: { x: number; y: number }, fileData?: any) => void;
   onEdgeConnect: (source: string, target: string) => Promise<void>;
   onEdgeDelete: (edgeId: string) => Promise<void>;
   onNodeDelete: (nodeId: string) => Promise<void>;
@@ -35,7 +34,6 @@ interface FlowCanvasProps {
 type ContextMenuType = "canvas" | "edge" | "node" | null;
 
 const FlowCanvas: React.FC<FlowCanvasProps> = ({
-  flowId,
   nodes,
   edges,
   onNodesChange,
@@ -48,7 +46,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   onNodeEdit,
   onNodeDragStop,
 }) => {
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -109,8 +106,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   );
 
   const handleNodeClick = useCallback(
-    (event: any, node: any) => {
-      setSelectedNodeId(node.id);
+    (_event: any, node: any) => {
       onNodeSelect(node.id);
       setContextMenu(null);
     },
@@ -119,7 +115,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
 
   // 节点拖拽停止
   const handleNodeDragStop = useCallback(
-    async (event: any, node: any) => {
+    async (_event: any, node: any) => {
       if (onNodeDragStop) {
         try {
           await onNodeDragStop(node.id, node.position);
@@ -142,6 +138,41 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         type: "canvas",
       });
     }
+  }, []);
+
+  // 处理文件拖拽到画布的事件
+  const handlePaneDrop = useCallback(
+    (event: any) => {
+      event.preventDefault();
+      try {
+        // 尝试从拖拽数据中获取文件信息
+        const fileDataJson = event.dataTransfer.getData("application/json");
+        if (fileDataJson) {
+          const fileData = JSON.parse(fileDataJson);
+          if (fileData && fileData.type === "file") {
+            // 计算拖拽位置在画布中的坐标
+            if (reactFlowWrapper.current) {
+              const rect = reactFlowWrapper.current.getBoundingClientRect();
+              const x = event.clientX - rect.left;
+              const y = event.clientY - rect.top;
+
+              // 触发文件节点创建
+              if (onAddNode) {
+                onAddNode({ x: x - 100, y: y - 50 }, fileData);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to handle file drop:", err);
+      }
+    },
+    [onAddNode],
+  );
+
+  // 处理拖拽悬停事件
+  const handlePaneDragOver = useCallback((event: any) => {
+    event.preventDefault();
   }, []);
 
   // 边的右键菜单
@@ -301,6 +332,8 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       className="w-full h-full"
       ref={reactFlowWrapper}
       onClick={handleCloseContextMenu}
+      onDrop={handlePaneDrop}
+      onDragOver={handlePaneDragOver}
     >
       <ReactFlow
         nodes={nodes}
