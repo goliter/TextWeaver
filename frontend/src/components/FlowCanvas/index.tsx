@@ -21,7 +21,12 @@ interface FlowCanvasProps {
   onEdgesChange: (edges: any[]) => void;
   onNodeSelect: (nodeId: string) => void;
   onAddNode: (position: { x: number; y: number }, fileData?: any) => void;
-  onEdgeConnect: (source: string, target: string) => Promise<void>;
+  onEdgeConnect: (
+    source: string,
+    target: string,
+    sourceHandle?: string,
+    targetHandle?: string,
+  ) => Promise<void>;
   onEdgeDelete: (edgeId: string) => Promise<void>;
   onNodeDelete: (nodeId: string) => Promise<void>;
   onNodeEdit: (nodeId: string) => void;
@@ -76,7 +81,12 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     async (params: any) => {
       if (onEdgeConnect) {
         try {
-          await onEdgeConnect(params.source, params.target);
+          await onEdgeConnect(
+            params.source,
+            params.target,
+            params.sourceHandle,
+            params.targetHandle,
+          );
         } catch (err) {
           console.error("Failed to create edge:", err);
         }

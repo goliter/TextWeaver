@@ -7,7 +7,7 @@ type AINodeProps = Node<
 >;
 
 const AINode: React.FC<AINodeProps> = ({ selected, data }) => {
-  const nodeName = data?.label || "AI";
+  const nodeName = data?.name || "AI";
 
   return (
     <div
@@ -16,7 +16,8 @@ const AINode: React.FC<AINodeProps> = ({ selected, data }) => {
       }`}
       style={{ outline: "none", boxShadow: "none" }}
     >
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Top} id="top" />
+      <Handle type="target" position={Position.Left} id="left" />
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-purple-500" />
         <span className="font-medium text-gray-900">AI</span>
@@ -24,7 +25,8 @@ const AINode: React.FC<AINodeProps> = ({ selected, data }) => {
       <div className="mt-1 text-xs text-gray-600 truncate" title={nodeName}>
         {nodeName}
       </div>
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Bottom} id="bottom" />
+      <Handle type="source" position={Position.Right} id="right" />
     </div>
   );
 };

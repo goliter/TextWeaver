@@ -13,7 +13,7 @@ type FileWriterNodeProps = Node<
 >;
 
 const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected, data }) => {
-  const nodeName = data?.label || "文件写入";
+  const nodeName = data?.name || "文件写入";
 
   return (
     <div
@@ -22,7 +22,7 @@ const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected, data }) => {
       }`}
       style={{ outline: "none", boxShadow: "none" }}
     >
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Left} id="left" />
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-orange-500" />
         <span className="font-medium text-gray-900">文件写入</span>
@@ -38,7 +38,6 @@ const FileWriterNode: React.FC<FileWriterNodeProps> = ({ selected, data }) => {
           {data.filePath}
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 };

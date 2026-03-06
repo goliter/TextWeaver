@@ -121,6 +121,8 @@ const WorkflowDetail: React.FC = () => {
             edge.source_node_id?.toString() ?? edge.source?.toString() ?? "",
           target:
             edge.target_node_id?.toString() ?? edge.target?.toString() ?? "",
+          sourceHandle: edge.source_handle,
+          targetHandle: edge.target_handle,
         })),
       );
     } catch (err) {
@@ -535,13 +537,20 @@ const WorkflowDetail: React.FC = () => {
     });
   };
 
-  const handleEdgeConnect = async (source: string, target: string) => {
+  const handleEdgeConnect = async (
+    source: string,
+    target: string,
+    sourceHandle?: string,
+    targetHandle?: string,
+  ) => {
     if (!workflowId) return;
 
     try {
       const edgeData = {
         source_node_id: parseInt(source),
         target_node_id: parseInt(target),
+        source_handle: sourceHandle,
+        target_handle: targetHandle,
       };
       const newEdge = await workflowApi.createEdge(
         parseInt(workflowId),
@@ -555,6 +564,8 @@ const WorkflowDetail: React.FC = () => {
           id: newEdge.id.toString(),
           source: newEdge.source_node_id.toString(),
           target: newEdge.target_node_id.toString(),
+          sourceHandle: newEdge.source_handle,
+          targetHandle: newEdge.target_handle,
         },
       ]);
     } catch (err) {
