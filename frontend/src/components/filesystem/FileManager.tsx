@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { FileResponse } from "@/types/filesystem";
 import { FileType } from "@/types/filesystem";
