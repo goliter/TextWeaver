@@ -1,0 +1,380 @@
+"""
+节点执行器
+实现各种节点的执行逻辑
+"""
+
+from typing import Dict, Any, Optional
+from sqlalchemy.orm import Session
+from app.modules.workflow.models import Node, Edge, Flow
+from app.modules.workflow.engine.data_flow import DataFlowManager
+from app.services.file_service import get_file_service
+from app.modules.ai.service import LangChainService
+from app.modules.filesystem.models import File, FileType
+
+
+class BaseNodeExecutor:
+    """基础节点执行器"""
+    
+    def __init__(self, db: Session):
+        self.db = db
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行节点
+        
+        Args:
+            node: 节点对象
+            data_flow: 数据流管理器
+        
+        Returns:
+            节点输出数据字典，key为连接点名称
+        """
+        raise NotImplementedError("子类必须实现execute方法")
+
+
+class FileReaderNodeExecutor(BaseNodeExecutor):
+    """文件读取节点执行器"""
+    
+    def _get_file_by_path(self, file_path: str, flow_id: int) -> Optional[File]:
+        """根据文件路径查找文件
+        
+        Args:
+            file_path: 文件路径，格式如 /工作流名称/文件夹/文件
+            flow_id: 工作流ID
+        
+        Returns:
+            文件对象，如果不存在则返回None
+        """
+        # 解析路径
+        path_parts = [part for part in file_path.split('/') if part]
+        if not path_parts:
+            return None
+        
+        # 从根文件夹开始查找
+        current_parent_id = None
+        
+        for part in path_parts:
+            file = self.db.query(File).filter(
+                File.name == part,
+                File.parent_id == current_parent_id,
+                File.flow_id == flow_id
+            ).first()
+            
+            if not file:
+                return None
+            
+            # 如果是最后一个部分，必须是文件
+            if part == path_parts[-1] and file.type != FileType.FILE:
+                return None
+            
+            current_parent_id = file.id
+        
+        return file
+    
+    def _get_file_id(self, node_data: Dict[str, Any], flow_id: int) -> int:
+        """获取文件ID
+        
+        优先使用fileId，如果没有则根据filePath查找
+        """
+        # 优先使用fileId
+        file_id = node_data.get("fileId")
+        if file_id:
+            return file_id
+        
+        # 根据filePath查找文件
+        file_path = node_data.get("filePath")
+        if file_path:
+            file = self._get_file_by_path(file_path, flow_id)
+            if file:
+                return file.id
+            raise ValueError(f"文件不存在: {file_path}")
+        
+        raise ValueError("文件读取节点缺少fileId或filePath配置")
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行文件读取节点
+        
+        读取文件内容并从右侧输出
+        """
+        try:
+            # 获取文件ID
+            file_id = self._get_file_id(node.data, node.flow_id)
+            
+            # 获取编码格式
+            encoding = node.data.get("encoding", "utf-8")
+            
+            # 读取文件内容
+            file_service = get_file_service(self.db)
+            content = file_service.read_file(file_id, encoding)
+            
+            # 从右侧输出文件内容
+            return {
+                "right": content
+            }
+        except Exception as e:
+            raise ValueError(f"文件读取失败: {str(e)}")
+
+
+class FileWriterNodeExecutor(BaseNodeExecutor):
+    """文件写入节点执行器"""
+    
+    def _get_file_by_path(self, file_path: str, flow_id: int) -> Optional[File]:
+        """根据文件路径查找文件
+        
+        Args:
+            file_path: 文件路径，格式如 /工作流名称/文件夹/文件
+            flow_id: 工作流ID
+        
+        Returns:
+            文件对象，如果不存在则返回None
+        """
+        # 解析路径
+        path_parts = [part for part in file_path.split('/') if part]
+        if not path_parts:
+            return None
+        
+        # 从根文件夹开始查找
+        current_parent_id = None
+        
+        for part in path_parts:
+            file = self.db.query(File).filter(
+                File.name == part,
+                File.parent_id == current_parent_id,
+                File.flow_id == flow_id
+            ).first()
+            
+            if not file:
+                return None
+            
+            # 如果是最后一个部分，必须是文件
+            if part == path_parts[-1] and file.type != FileType.FILE:
+                return None
+            
+            current_parent_id = file.id
+        
+        return file
+    
+    def _get_file_id(self, node_data: Dict[str, Any], flow_id: int) -> int:
+        """获取文件ID
+        
+        优先使用fileId，如果没有则根据filePath查找
+        """
+        # 优先使用fileId
+        file_id = node_data.get("fileId")
+        if file_id:
+            return file_id
+        
+        # 根据filePath查找文件
+        file_path = node_data.get("filePath")
+        if file_path:
+            file = self._get_file_by_path(file_path, flow_id)
+            if file:
+                return file.id
+            raise ValueError(f"文件不存在: {file_path}")
+        
+        raise ValueError("文件写入节点缺少fileId或filePath配置")
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行文件写入节点
+        
+        支持直接写入和AI修改两种模式
+        """
+        try:
+            # 获取文件ID
+            file_id = self._get_file_id(node.data, node.flow_id)
+            
+            # 获取写入模式
+            mode = node.data.get("mode", "direct")
+            
+            # 获取输入数据（只使用左侧输入端口）
+            inputs = data_flow.get_node_inputs(node.id)
+            
+            # 只使用左侧输入
+            input_data = inputs.get("left")
+            
+            if input_data is None:
+                # 提供更详细的错误信息
+                if not inputs:
+                    raise ValueError("文件写入节点缺少输入数据：没有任何边连接到该节点")
+                else:
+                    raise ValueError("文件写入节点缺少输入数据：请从左侧输入端口连接数据")
+            
+            # 获取编码格式
+            encoding = node.data.get("encoding", "utf-8")
+            # 获取覆盖选项
+            overwrite = node.data.get("overwrite", True)
+            
+            file_service = get_file_service(self.db)
+            
+            if mode == "direct":
+                # 直接写入模式
+                content = str(input_data)
+            else:
+                # AI修改模式
+                ai_prompt = node.data.get("aiPrompt", "")
+                if not ai_prompt:
+                    raise ValueError("AI修改模式缺少aiPrompt配置")
+                
+                # 获取原文件内容
+                original_content = file_service.read_file(file_id, encoding)
+                
+                # 替换提示词中的变量
+                prompt = ai_prompt.replace("{file_content}", original_content)
+                prompt = prompt.replace("{input_data}", str(input_data))
+                
+                # 调用AI服务
+                ai_service = LangChainService()
+                content = ai_service.generate_text(prompt)
+            
+            # 写入文件
+            file_service.write_file(file_id, content, encoding, overwrite)
+            
+            # 文件写入节点没有输出
+            return {}
+        except Exception as e:
+            raise ValueError(f"文件写入失败: {str(e)}")
+
+
+class AINodeExecutor(BaseNodeExecutor):
+    """AI节点执行器"""
+    
+    def __init__(self, db: Session):
+        super().__init__(db)
+        self.ai_service = LangChainService()
+    
+    def _get_input_edges(self, node_id: int) -> list:
+        """获取节点的输入边"""
+        return self.db.query(Edge).filter(
+            Edge.target_node_id == node_id
+        ).all()
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行AI节点
+        
+        支持多输入（上侧和左侧）和多输出（下侧和右侧）
+        """
+        # 收集输入数据
+        inputs = data_flow.get_node_inputs(node.id)
+        
+        # 获取输入边信息，用于构建变量名
+        input_edges = self._get_input_edges(node.id)
+        edge_map = {edge.target_handle: edge for edge in input_edges}
+        
+        # 构建变量字典
+        variables = {}
+        
+        # 处理上侧输入（一般数据）
+        top_input = inputs.get("top")
+        if top_input is not None:
+            # 使用与前端一致的变量名格式: input_{source_node_id}
+            if "top" in edge_map:
+                source_node_id = edge_map["top"].source_node_id
+                var_name = f"input_{source_node_id}"
+                variables[var_name] = top_input
+            else:
+                variables["input"] = top_input
+        
+        # 处理左侧输入（文件数据）
+        left_input = inputs.get("left")
+        if left_input is not None:
+            # 使用与前端一致的变量名格式: file_{source_node_id}
+            if "left" in edge_map:
+                source_node_id = edge_map["left"].source_node_id
+                var_name = f"file_{source_node_id}"
+                variables[var_name] = left_input
+            else:
+                variables["file"] = left_input
+        
+        # 获取提示词
+        prompt = node.data.get("prompt", "")
+        
+        # 替换提示词中的变量
+        for var_name, var_value in variables.items():
+            prompt = prompt.replace(f"{{{var_name}}}", str(var_value))
+        
+        try:
+            # 调用AI服务
+            content = self.ai_service.generate_text(prompt)
+            
+            # 构建输出数据
+            outputs = {}
+            
+            # 获取输出配置
+            output_config = node.data.get("outputs", {})
+            
+            # 下侧输出
+            if output_config.get("bottom") or not output_config:
+                outputs["bottom"] = content
+            
+            # 右侧输出
+            if output_config.get("right") or not output_config:
+                outputs["right"] = content
+            
+            return outputs
+        except Exception as e:
+            raise ValueError(f"AI节点执行失败: {str(e)}")
+
+
+class StartNodeExecutor(BaseNodeExecutor):
+    """开始节点执行器"""
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行开始节点
+        
+        返回初始输入数据
+        """
+        # 开始节点从底部输出初始数据
+        return {
+            "bottom": node.data.get("value", "")
+        }
+
+
+class EndNodeExecutor(BaseNodeExecutor):
+    """结束节点执行器"""
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行结束节点
+        
+        收集所有输入数据并完成工作流
+        """
+        # 收集输入数据
+        inputs = data_flow.get_node_inputs(node.id)
+        
+        # 结束节点没有输出
+        return {}
+
+
+def get_node_executor(db: Session, node_type: str) -> BaseNodeExecutor:
+    """
+    获取节点执行器
+    
+    Args:
+        db: 数据库会话
+        node_type: 节点类型
+    
+    Returns:
+        节点执行器实例
+    
+    Raises:
+        ValueError: 如果节点类型不支持
+    """
+    executors = {
+        "file_reader": FileReaderNodeExecutor,
+        "fileReader": FileReaderNodeExecutor,
+        "file_writer": FileWriterNodeExecutor,
+        "fileWriter": FileWriterNodeExecutor,
+        "ai": AINodeExecutor,
+        "start": StartNodeExecutor,
+        "end": EndNodeExecutor,
+    }
+    
+    executor_class = executors.get(node_type)
+    if not executor_class:
+        raise ValueError(f"不支持的节点类型: {node_type}")
+    
+    return executor_class(db)

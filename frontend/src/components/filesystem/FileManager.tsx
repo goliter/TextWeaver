@@ -11,7 +11,10 @@ interface FileTreeItemProps {
   onSelectFile: (file: FileResponse) => void;
   onDelete: (fileId: number) => void;
   onContextMenu: (e: React.MouseEvent, file: FileResponse) => void;
-  allFiles: FileResponse[];
+  children: FileResponse[];
+  isLoading: boolean;
+  loadFolderContent: (folderId: number) => Promise<FileResponse[]>;
+  folderContents: { [key: number]: FileResponse[] };
 }
 
 function FileTreeItem({
@@ -23,7 +26,10 @@ function FileTreeItem({
   onSelectFile,
   onDelete,
   onContextMenu,
-  allFiles,
+  children,
+  isLoading,
+  loadFolderContent,
+  folderContents,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -43,22 +49,24 @@ function FileTreeItem({
   const isSelected = selectedFileId === file.id;
   const isDragOver = isFolder && dragOverFolder === file.id;
 
-  const children = allFiles
-    .filter((f) => f.parent_id === file.id)
-    .sort((a, b) => {
-      // 文件夹排在文件前面
-      if (a.type === FileType.FOLDER && b.type !== FileType.FOLDER) {
-        return -1;
-      }
-      if (a.type !== FileType.FOLDER && b.type === FileType.FOLDER) {
-        return 1;
-      }
-      // 同类型按名称字母排序
-      return a.name.localeCompare(b.name);
-    });
+  const sortedChildren = children.sort((a, b) => {
+    // 文件夹排在文件前面
+    if (a.type === FileType.FOLDER && b.type !== FileType.FOLDER) {
+      return -1;
+    }
+    if (a.type !== FileType.FOLDER && b.type === FileType.FOLDER) {
+      return 1;
+    }
+    // 同类型按名称字母排序
+    return a.name.localeCompare(b.name);
+  });
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (isFolder) {
+      if (!isExpanded) {
+        // 展开文件夹时加载内容
+        await loadFolderContent(file.id);
+      }
       onToggleFolder(file.id);
     } else {
       onSelectFile(file);
@@ -191,28 +199,51 @@ function FileTreeItem({
         </button>
       </div>
 
-      {isFolder && isExpanded && children.length > 0 && (
+      {isFolder && isExpanded && (
         <div>
-          {children.map((child) => (
-            <FileTreeItem
-              key={child.id}
-              file={child}
-              level={level + 1}
-              expandedFolders={expandedFolders}
-              selectedFileId={selectedFileId}
-              onToggleFolder={onToggleFolder}
-              onSelectFile={onSelectFile}
-              onDelete={onDelete}
-              onContextMenu={onContextMenu}
-              allFiles={allFiles}
-              onDragStart={onDragStart}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
-              draggedFile={draggedFile}
-              dragOverFolder={dragOverFolder}
-            />
-          ))}
+          {isLoading ? (
+            <div
+              style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
+              className="py-2 text-xs text-gray-500"
+            >
+              加载中...
+            </div>
+          ) : sortedChildren.length > 0 ? (
+            sortedChildren.map((child) => (
+              <FileTreeItem
+                key={child.id}
+                file={child}
+                level={level + 1}
+                expandedFolders={expandedFolders}
+                selectedFileId={selectedFileId}
+                onToggleFolder={onToggleFolder}
+                onSelectFile={onSelectFile}
+                onDelete={onDelete}
+                onContextMenu={onContextMenu}
+                children={
+                  child.type === FileType.FOLDER
+                    ? folderContents[child.id] || []
+                    : []
+                }
+                isLoading={false}
+                loadFolderContent={loadFolderContent}
+                folderContents={folderContents}
+                onDragStart={onDragStart}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                draggedFile={draggedFile}
+                dragOverFolder={dragOverFolder}
+              />
+            ))
+          ) : (
+            <div
+              style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
+              className="py-2 text-xs text-gray-500"
+            >
+              空文件夹
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -223,26 +254,28 @@ interface FileManagerProps {
   onFileSelect: (file: FileResponse | null) => void;
   selectedFile: FileResponse | null;
   files: FileResponse[];
-  allFiles: FileResponse[];
   loading: boolean;
   error: string | null;
   rootFolderName?: string;
   createFile: (fileData: any) => Promise<FileResponse>;
   updateFile: (fileId: number, fileData: any) => Promise<FileResponse>;
-  deleteFile: (fileId: number) => Promise<void>;
+  deleteFile: (fileId: number, recursive?: boolean) => Promise<void>;
+  loadFolderContent: (folderId: number) => Promise<FileResponse[]>;
+  loadFileContent: (fileId: number) => Promise<FileResponse>;
 }
 
 export function FileManager({
   onFileSelect,
   selectedFile,
   files,
-  allFiles,
   loading,
   error,
   rootFolderName,
   createFile,
   updateFile,
   deleteFile,
+  loadFolderContent,
+  loadFileContent,
 }: FileManagerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<number>>(
     new Set(),
@@ -273,6 +306,20 @@ export function FileManager({
   const [moveTargetFolderId, setMoveTargetFolderId] = useState<number | null>(
     null,
   );
+
+  // 文件夹内容状态
+  const [folderContents, setFolderContents] = useState<{
+    [key: number]: FileResponse[];
+  }>({});
+  const [loadingFolders, setLoadingFolders] = useState<Set<number>>(new Set());
+
+  // 当files属性变化时，重置folderContents缓存
+  useEffect(() => {
+    // 只有当files数组长度或内容发生变化时才重置缓存
+    if (files.length > 0) {
+      setFolderContents({});
+    }
+  }, [files.length]);
 
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState<{
@@ -307,11 +354,52 @@ export function FileManager({
   }, []);
 
   const handleSelectFile = useCallback(
-    (file: FileResponse) => {
-      onFileSelect(file);
+    async (file: FileResponse) => {
+      if (file.type === FileType.FILE) {
+        // 点击文件时加载文件内容
+        try {
+          const fileWithContent = await loadFileContent(file.id);
+          onFileSelect(fileWithContent);
+        } catch (error) {
+          console.error("Failed to load file content:", error);
+          onFileSelect(file);
+        }
+      } else {
+        onFileSelect(file);
+      }
     },
-    [onFileSelect],
+    [onFileSelect, loadFileContent],
   );
+
+  const handleLoadFolderContent = async (folderId: number) => {
+    if (folderContents[folderId]) {
+      // 已经加载过，直接返回
+      return folderContents[folderId];
+    }
+
+    try {
+      setLoadingFolders((prev) => new Set(prev).add(folderId));
+      const contents = await loadFolderContent(folderId);
+      setFolderContents((prev) => ({
+        ...prev,
+        [folderId]: contents,
+      }));
+      setLoadingFolders((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(folderId);
+        return newSet;
+      });
+      return contents;
+    } catch (error) {
+      console.error("Failed to load folder content:", error);
+      setLoadingFolders((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(folderId);
+        return newSet;
+      });
+      return [];
+    }
+  };
 
   const handleDelete = (fileId: number) => {
     openDeleteModal(fileId);
@@ -364,6 +452,17 @@ export function FileManager({
         setExpandedFolders((prev) => new Set(prev).add(newFile.id));
       }
 
+      // 如果有父文件夹，更新父文件夹的内容
+      if (createParentId) {
+        setFolderContents((prev) => {
+          const updatedContents = prev[createParentId] || [];
+          return {
+            ...prev,
+            [createParentId]: [...updatedContents, newFile],
+          };
+        });
+      }
+
       setNewItemName("");
       setShowCreateModal(false);
     } catch (err: any) {
@@ -384,8 +483,32 @@ export function FileManager({
 
     setRenameError(null);
     try {
-      await updateFile(renameFile.id, {
+      const updatedFile = await updateFile(renameFile.id, {
         name: renameNewName.trim(),
+      });
+
+      // 更新文件系统缓存
+      const updateFileInCache: any = (files: FileResponse[]) => {
+        return files.map((file) => {
+          if (file.id === renameFile.id) {
+            return updatedFile;
+          }
+          if (file.type === FileType.FOLDER && folderContents[file.id]) {
+            return {
+              ...file,
+              children: updateFileInCache(folderContents[file.id]),
+            };
+          }
+          return file;
+        });
+      };
+
+      // 更新所有文件夹内容缓存
+      Object.keys(folderContents).forEach((folderId) => {
+        setFolderContents((prev) => ({
+          ...prev,
+          [parseInt(folderId)]: updateFileInCache(prev[parseInt(folderId)]),
+        }));
       });
 
       setRenameNewName("");
@@ -406,10 +529,36 @@ export function FileManager({
     if (!deleteFileId) return;
 
     try {
-      await deleteFile(deleteFileId);
+      // 查找要删除的文件/文件夹
+      const fileToDelete =
+        files.find((f) => f.id === deleteFileId) ||
+        Object.values(folderContents)
+          .flat()
+          .find((f) => f.id === deleteFileId);
+
+      // 检查是否是文件夹
+      const isFolder = fileToDelete?.type === FileType.FOLDER;
+
+      // 调用删除API，文件夹需要递归删除
+      await deleteFile(deleteFileId, isFolder);
+
       if (selectedFile?.id === deleteFileId) {
         onFileSelect(null);
       }
+
+      // 从文件系统缓存中移除删除的文件/文件夹
+      const removeFileFromCache = (files: FileResponse[]) => {
+        return files.filter((file) => file.id !== deleteFileId);
+      };
+
+      // 更新所有文件夹内容缓存
+      Object.keys(folderContents).forEach((folderId) => {
+        setFolderContents((prev) => ({
+          ...prev,
+          [parseInt(folderId)]: removeFileFromCache(prev[parseInt(folderId)]),
+        }));
+      });
+
       setShowDeleteModal(false);
       setDeleteFileId(null);
     } catch (err: any) {
@@ -447,9 +596,32 @@ export function FileManager({
     if (!moveSourceFile || !moveTargetFolderId) return;
 
     try {
-      await updateFile(moveSourceFile.id, {
+      const updatedFile = await updateFile(moveSourceFile.id, {
         parent_id: moveTargetFolderId,
       });
+
+      // 从原文件夹中移除文件
+      const removeFileFromCache = (files: FileResponse[]) => {
+        return files.filter((file) => file.id !== moveSourceFile.id);
+      };
+
+      // 更新所有文件夹内容缓存
+      Object.keys(folderContents).forEach((folderId) => {
+        setFolderContents((prev) => ({
+          ...prev,
+          [parseInt(folderId)]: removeFileFromCache(prev[parseInt(folderId)]),
+        }));
+      });
+
+      // 添加到新文件夹
+      setFolderContents((prev) => {
+        const updatedContents = prev[moveTargetFolderId] || [];
+        return {
+          ...prev,
+          [moveTargetFolderId]: [...updatedContents, updatedFile],
+        };
+      });
+
       setShowMoveConfirmModal(false);
       setMoveSourceFile(null);
       setMoveTargetFolderId(null);
@@ -550,7 +722,14 @@ export function FileManager({
               onSelectFile={handleSelectFile}
               onDelete={handleDelete}
               onContextMenu={handleContextMenu}
-              allFiles={allFiles}
+              children={
+                file.type === FileType.FOLDER
+                  ? folderContents[file.id] || []
+                  : []
+              }
+              isLoading={loadingFolders.has(file.id)}
+              loadFolderContent={handleLoadFolderContent}
+              folderContents={folderContents}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}

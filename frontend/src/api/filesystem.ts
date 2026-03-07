@@ -7,9 +7,9 @@ export const filesystemApi = {
     return response.data;
   },
 
-  getFiles: async (flowId: number, parentId?: number): Promise<FileResponse[]> => {
+  getFiles: async (flowId: number, parentId?: number | null): Promise<FileResponse[]> => {
     const response = await api.get<FileResponse[]>(`/flows/${flowId}/files`, {
-      params: parentId !== undefined ? { parent_id: parentId } : undefined,
+      params: parentId !== undefined && parentId !== null ? { parent_id: parentId } : undefined,
     });
     return response.data;
   },

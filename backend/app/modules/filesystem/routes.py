@@ -219,10 +219,7 @@ def delete_file(
             detail="File not found"
         )
     
-    if recursive and file.type == models.FileType.FOLDER:
-        crud.delete_files_by_parent_id(db, file_id, flow_id)
-    
-    success = crud.delete_file(db, file_id, flow_id)
+    success = crud.delete_file(db, file_id, flow_id, recursive)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -241,6 +241,49 @@ class CompletionResponse(BaseModel):
     usage: Optional[Dict[str, int]] = None
 
 
+# ==================== AI Node Data Schemas ====================
+
+class VariableData(BaseModel):
+    """变量数据模型"""
+    id: str
+    name: str
+    sourceNodeId: str
+    sourceNodeName: str
+    type: str  # "input" or "file"
+
+
+class OutputConfig(BaseModel):
+    """输出配置模型"""
+    bottom: Optional[str] = None
+    right: Optional[str] = None
+
+
+class AINodeData(BaseModel):
+    """AI节点数据模型"""
+    model: str = "gemini-2.5-flash"
+    prompt: str = ""
+    variables: Dict[str, VariableData] = {}
+    outputs: OutputConfig = OutputConfig()
+
+
+# ==================== File Node Data Schemas ====================
+
+class FileReaderNodeData(BaseModel):
+    """文件读取节点数据模型"""
+    filePath: str
+    encoding: str = "utf-8"
+    fileId: int
+
+
+class FileWriterNodeData(BaseModel):
+    """文件写入节点数据模型"""
+    filePath: str
+    fileId: int
+    mode: str = "direct"  # "direct" or "ai"
+    overwrite: bool = True
+    aiPrompt: Optional[str] = None
+
+
 # 更新前向引用
 FlowDetailResponse.update_forward_refs()
 ExecutionDetailResponse.update_forward_refs()

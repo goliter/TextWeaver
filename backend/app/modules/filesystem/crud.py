@@ -141,7 +141,7 @@ def update_file(db: Session, file_id: int, file_update: schemas.FileUpdate, flow
     return db_file
 
 
-def delete_file(db: Session, file_id: int, flow_id: int) -> bool:
+def delete_file(db: Session, file_id: int, flow_id: int, recursive: bool = False) -> bool:
     db_file = db.query(models.File).filter(
         models.File.id == file_id,
         models.File.flow_id == flow_id
@@ -149,6 +149,11 @@ def delete_file(db: Session, file_id: int, flow_id: int) -> bool:
     
     if not db_file:
         return False
+    
+    # 如果是文件夹且需要递归删除
+    if db_file.type == models.FileType.FOLDER and recursive:
+        # 递归删除所有子文件和文件夹
+        delete_files_by_parent_id(db, file_id, flow_id)
     
     db.delete(db_file)
     db.commit()

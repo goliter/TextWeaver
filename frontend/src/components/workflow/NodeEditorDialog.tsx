@@ -1,9 +1,15 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
+import PromptEditor from "../AINode/PromptEditor";
+import DataSourceManager from "../AINode/DataSourceManager";
+import FileSelector from "../FileNode/FileSelector";
+import WriteModeSelector from "../FileNode/WriteModeSelector";
+import AIPromptEditor from "../FileNode/AIPromptEditor";
 
 interface NodeEditorDialogProps {
   isOpen: boolean;
   node: any;
+  edges?: any[];
   onSave: (data: any) => void;
   onCancel: () => void;
 }
@@ -11,6 +17,7 @@ interface NodeEditorDialogProps {
 const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
   isOpen,
   node,
+  edges = [],
   onSave,
   onCancel,
 }) => {
@@ -28,6 +35,42 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
   const handleChange = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
+
+  // 分析AI节点的数据源
+  const analyzeDataSources = () => {
+    if (node.type !== "ai") {
+      return { topInputs: [], leftInputs: [] };
+    }
+
+    const topInputs: any[] = [];
+    const leftInputs: any[] = [];
+
+    edges.forEach((edge) => {
+      if (edge.target === node.id) {
+        if (edge.targetHandle === "top") {
+          topInputs.push({
+            id: `input_${edge.source}`,
+            name: `input_${edge.source}`,
+            sourceNodeId: edge.source,
+            sourceNodeName: `节点 ${edge.source}`,
+            type: "input" as const,
+          });
+        } else if (edge.targetHandle === "left") {
+          leftInputs.push({
+            id: `file_${edge.source}`,
+            name: `file_${edge.source}`,
+            sourceNodeId: edge.source,
+            sourceNodeName: `节点 ${edge.source}`,
+            type: "file" as const,
+          });
+        }
+      }
+    });
+
+    return { topInputs, leftInputs };
+  };
+
+  const { topInputs, leftInputs } = analyzeDataSources();
 
   const handleSubmit = () => {
     onSave(formData);
@@ -115,7 +158,7 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
           )}
 
           {node.type === "ai" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   节点名称
@@ -132,31 +175,30 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
                   模型
                 </label>
                 <select
-                  value={formData.model || "gpt-3.5-turbo"}
+                  value={formData.model || "gemini-2.5-flash"}
                   onChange={(e) => handleChange("model", e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                   <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                   <option value="gpt-4">GPT-4</option>
-                  <option value="claude-3">Claude 3</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  提示词
-                </label>
-                <textarea
-                  value={formData.prompt || ""}
-                  onChange={(e) => handleChange("prompt", e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+              <DataSourceManager
+                topInputs={topInputs}
+                leftInputs={leftInputs}
+              />
+              <PromptEditor
+                value={formData.prompt || ""}
+                onChange={(value) => handleChange("prompt", value)}
+                variables={[...topInputs, ...leftInputs]}
+              />
             </div>
           )}
 
           {(node.type === "fileReader" || node.type === "file_reader") && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   节点名称
@@ -172,12 +214,13 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   文件路径 <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <FileSelector
                   value={formData.filePath || ""}
-                  onChange={(e) => handleChange("filePath", e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="请输入文件路径，例如：/data/example.txt"
+                  onChange={(value) => handleChange("filePath", value)}
+                  onFileSelect={(fileId, filePath) => {
+                    handleChange("fileId", fileId);
+                    handleChange("filePath", filePath);
+                  }}
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   文件路径是相对于工作流根目录的路径
@@ -201,7 +244,7 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
           )}
 
           {(node.type === "fileWriter" || node.type === "file_writer") && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   节点名称
@@ -213,16 +256,21 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+              <WriteModeSelector
+                mode={(formData.mode || "direct") as "direct" | "ai"}
+                onChange={(mode) => handleChange("mode", mode)}
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   文件路径 <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <FileSelector
                   value={formData.filePath || ""}
-                  onChange={(e) => handleChange("filePath", e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="请输入文件路径，例如：/data/output.txt"
+                  onChange={(value) => handleChange("filePath", value)}
+                  onFileSelect={(fileId, filePath) => {
+                    handleChange("fileId", fileId);
+                    handleChange("filePath", filePath);
+                  }}
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   文件路径是相对于工作流根目录的路径
@@ -257,6 +305,12 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
                   </span>
                 </label>
               </div>
+              {formData.mode === "ai" && (
+                <AIPromptEditor
+                  value={formData.aiPrompt || ""}
+                  onChange={(value) => handleChange("aiPrompt", value)}
+                />
+              )}
             </div>
           )}
         </div>

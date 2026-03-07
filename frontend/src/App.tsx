@@ -6,7 +6,6 @@ import Register from "./pages/auth/Register";
 import Dashboard from "./pages/Dashboard";
 import RunPipeline from "./pages/dashboard/pipeline/RunPipeline";
 import TemplateLibrary from "./pages/dashboard/pipeline/TemplateLibrary";
-import FilesystemTest from "./pages/dashboard/filesystem/FilesystemTest";
 import WorkflowList from "./pages/dashboard/workflows/WorkflowList";
 import WorkflowDetail from "./pages/dashboard/workflows/WorkflowDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -28,7 +27,6 @@ const router = createBrowserRouter([
           { path: "workflows", element: <WorkflowList /> },
           { path: "run-pipeline", element: <RunPipeline /> },
           { path: "template-library", element: <TemplateLibrary /> },
-          { path: "filesystem", element: <FilesystemTest /> },
         ],
       },
       {

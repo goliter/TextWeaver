@@ -63,7 +63,6 @@ const WorkflowDetail: React.FC = () => {
     node: null,
   });
   const [files, setFiles] = useState<any[]>([]);
-  const [allFiles, setAllFiles] = useState<any[]>([]);
   const [filesLoading, setFilesLoading] = useState<boolean>(false);
   const [workflowRootFolder, setWorkflowRootFolder] = useState<any>(null);
 
@@ -172,44 +171,21 @@ const WorkflowDetail: React.FC = () => {
 
     try {
       setFilesLoading(true);
-      // 获取所有文件
-      const allFilesData = await filesystemApi.getAllFiles(
+      // 初始只获取根目录的文件
+      const rootFilesData = await filesystemApi.getFiles(
         parseInt(workflowId),
+        null, // 根目录
       );
-      setAllFiles(allFilesData);
+      setFiles(rootFilesData);
 
-      // 构建文件树结构
-      const fileMap: { [key: number]: any } = {};
-      let rootFolder: any = null;
-
-      // 首先创建所有文件的映射
-      allFilesData.forEach((file) => {
-        fileMap[file.id] = { ...file, children: [] };
-      });
-
-      // 然后构建文件树
-      allFilesData.forEach((file) => {
-        if (file.parent_id === null && file.type === "folder") {
-          // 根文件夹 - 确保只设置一次，避免被其他文件覆盖
-          if (!rootFolder) {
-            rootFolder = fileMap[file.id];
-          }
-        } else {
-          // 子文件/文件夹
-          if (file.parent_id !== null && fileMap[file.parent_id]) {
-            fileMap[file.parent_id].children.push(fileMap[file.id]);
-          }
-        }
-      });
-
-      // 只显示根文件夹内的内容
+      // 查找根文件夹
+      const rootFolder = rootFilesData.find(
+        (file) => file.parent_id === null && file.type === "folder",
+      );
       if (rootFolder) {
-        // 保存根文件夹信息，用于显示在资源管理器标题中
         setWorkflowRootFolder(rootFolder);
-        // 只显示根文件夹内的内容
-        setFiles(rootFolder.children || []);
       } else {
-        setFiles([]);
+        setWorkflowRootFolder(null);
       }
     } catch (err) {
       console.error("Failed to load file system data:", err);
@@ -397,6 +373,8 @@ const WorkflowDetail: React.FC = () => {
       console.error("Failed to execute workflow:", err);
       alert("执行工作流失败");
       setIsExecuting(false);
+      // 刷新执行历史记录
+      loadExecutionData();
     }
   };
 
@@ -727,7 +705,6 @@ const WorkflowDetail: React.FC = () => {
             }}
             selectedFile={selectedFile}
             files={files}
-            allFiles={allFiles}
             loading={filesLoading}
             error={null}
             rootFolderName={workflowRootFolder?.name}
@@ -755,15 +732,30 @@ const WorkflowDetail: React.FC = () => {
               loadFileSystemData();
               return updatedFile;
             }}
-            deleteFile={async (fileId) => {
+            deleteFile={async (fileId, recursive) => {
               if (!workflowId) throw new Error("Workflow ID not found");
-              await filesystemApi.deleteFile(parseInt(workflowId), fileId);
+              await filesystemApi.deleteFile(
+                parseInt(workflowId),
+                fileId,
+                recursive,
+              );
               loadFileSystemData();
               if (selectedFileId === fileId) {
                 setSelectedFileId(null);
                 setSelectedFile(null);
                 setShowFileEditor(false);
               }
+            }}
+            loadFolderContent={async (folderId) => {
+              if (!workflowId) throw new Error("Workflow ID not found");
+              return await filesystemApi.getFiles(
+                parseInt(workflowId),
+                folderId,
+              );
+            }}
+            loadFileContent={async (fileId) => {
+              if (!workflowId) throw new Error("Workflow ID not found");
+              return await filesystemApi.getFile(parseInt(workflowId), fileId);
             }}
           />
         </div>
@@ -827,6 +819,7 @@ const WorkflowDetail: React.FC = () => {
                 node={selectedNode}
                 onNodeUpdate={handleNodeUpdate}
                 onDeleteNode={handleDeleteNode}
+                edges={edges}
               />
             )}
             {activeTab === "flow" && (
@@ -893,6 +886,7 @@ const WorkflowDetail: React.FC = () => {
       <NodeEditorDialog
         isOpen={nodeEditor.isOpen}
         node={nodeEditor.node}
+        edges={edges}
         onSave={(data) => {
           if (nodeEditor.node) {
             handleNodeUpdate(data, nodeEditor.node.id);

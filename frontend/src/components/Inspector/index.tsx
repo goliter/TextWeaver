@@ -35,7 +35,7 @@ const Inspector: React.FC<InspectorProps> = ({
           </button>
         </div>
       </div>
-      <div className="p-4">{children}</div>
+      <div className="p-4 overflow-y-auto max-h-[calc(100vh-64px)]">{children}</div>
     </div>
   );
 };
