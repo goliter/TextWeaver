@@ -349,6 +349,131 @@ class EndNodeExecutor(BaseNodeExecutor):
         return {}
 
 
+class FolderWriterNodeExecutor(BaseNodeExecutor):
+    """文件夹写入节点执行器"""
+    
+    def _get_folder_by_path(self, folder_path: str, flow_id: int) -> Optional[File]:
+        """根据文件夹路径查找文件夹
+        
+        Args:
+            folder_path: 文件夹路径，格式如 /工作流名称/文件夹1/文件夹2
+            flow_id: 工作流ID
+        
+        Returns:
+            文件夹对象，如果不存在则返回None
+        """
+        # 解析路径
+        path_parts = [part for part in folder_path.split('/') if part]
+        if not path_parts:
+            return None
+        
+        # 从根文件夹开始查找
+        current_parent_id = None
+        
+        for part in path_parts:
+            file = self.db.query(File).filter(
+                File.name == part,
+                File.parent_id == current_parent_id,
+                File.flow_id == flow_id
+            ).first()
+            
+            if not file:
+                return None
+            
+            # 必须是文件夹
+            if file.type != FileType.FOLDER:
+                return None
+            
+            current_parent_id = file.id
+        
+        return file
+    
+    def _get_folder_id(self, node_data: Dict[str, Any], flow_id: int) -> int:
+        """获取文件夹ID
+        
+        优先使用folderId，如果没有则根据folderPath查找
+        """
+        # 优先使用folderId
+        folder_id = node_data.get("folderId")
+        if folder_id:
+            return folder_id
+        
+        # 根据folderPath查找文件夹
+        folder_path = node_data.get("folderPath")
+        if folder_path:
+            folder = self._get_folder_by_path(folder_path, flow_id)
+            if folder:
+                return folder.id
+            raise ValueError(f"文件夹不存在: {folder_path}")
+        
+        raise ValueError("文件夹写入节点缺少folderId或folderPath配置")
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行文件夹写入节点
+        
+        在指定文件夹中创建新文件并写入内容
+        """
+        try:
+            # 获取文件夹ID
+            folder_id = self._get_folder_id(node.data, node.flow_id)
+            
+            # 获取输入数据（只使用左侧输入端口）
+            inputs = data_flow.get_node_inputs(node.id)
+            
+            # 只使用左侧输入
+            input_data = inputs.get("left")
+            
+            if input_data is None:
+                # 提供更详细的错误信息
+                if not inputs:
+                    raise ValueError("文件夹写入节点缺少输入数据：没有任何边连接到该节点")
+                else:
+                    raise ValueError("文件夹写入节点缺少输入数据：请从左侧输入端口连接数据")
+            
+            # 生成文件名（使用当前时间）
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_name = f"output_{timestamp}.txt"
+            
+            # 检查同名文件是否存在
+            existing_file = self.db.query(File).filter(
+                File.name == file_name,
+                File.parent_id == folder_id,
+                File.flow_id == node.flow_id
+            ).first()
+            
+            # 如果文件已存在，添加序号
+            if existing_file:
+                counter = 1
+                while existing_file:
+                    file_name = f"output_{timestamp}_{counter}.txt"
+                    existing_file = self.db.query(File).filter(
+                        File.name == file_name,
+                        File.parent_id == folder_id,
+                        File.flow_id == node.flow_id
+                    ).first()
+                    counter += 1
+            
+            # 创建新文件
+            new_file = File(
+                name=file_name,
+                type=FileType.FILE,
+                content=str(input_data),
+                size=len(str(input_data)),
+                flow_id=node.flow_id,
+                parent_id=folder_id
+            )
+            self.db.add(new_file)
+            self.db.commit()
+            self.db.refresh(new_file)
+            
+            # 文件夹写入节点没有输出
+            return {}
+        except Exception as e:
+            raise ValueError(f"文件夹写入失败: {str(e)}")
+
+
 def get_node_executor(db: Session, node_type: str) -> BaseNodeExecutor:
     """
     获取节点执行器
@@ -368,6 +493,8 @@ def get_node_executor(db: Session, node_type: str) -> BaseNodeExecutor:
         "fileReader": FileReaderNodeExecutor,
         "file_writer": FileWriterNodeExecutor,
         "fileWriter": FileWriterNodeExecutor,
+        "folder_writer": FolderWriterNodeExecutor,
+        "folderWriter": FolderWriterNodeExecutor,
         "ai": AINodeExecutor,
         "start": StartNodeExecutor,
         "end": EndNodeExecutor,

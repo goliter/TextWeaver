@@ -3,6 +3,7 @@ import {
   AINodeConfig,
   FileReaderNodeConfig,
   FileWriterNodeConfig,
+  FolderWriterNodeConfig,
   StartNodeConfig,
   EndNodeConfig,
 } from "../nodes";
@@ -35,6 +36,9 @@ const NodeConfig: React.FC<NodeConfigProps> = ({ node, edges = [] }) => {
       case "fileWriter":
       case "file_writer":
         return "文件写入节点";
+      case "folderWriter":
+      case "folder_writer":
+        return "文件夹写入节点";
       case "input":
         return "输入节点";
       case "output":
@@ -98,6 +102,12 @@ const NodeConfig: React.FC<NodeConfigProps> = ({ node, edges = [] }) => {
       {node.type === "end" && (
         <div className="space-y-4 pt-3 border-t border-gray-200">
           <EndNodeConfig node={node} />
+        </div>
+      )}
+
+      {(node.type === "folderWriter" || node.type === "folder_writer") && (
+        <div className="space-y-4 pt-3 border-t border-gray-200">
+          <FolderWriterNodeConfig node={node} />
         </div>
       )}
     </div>

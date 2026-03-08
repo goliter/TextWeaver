@@ -13,6 +13,7 @@ class NodeType(str, Enum):
     AI = "ai"
     FILE_READER = "file_reader"
     FILE_WRITER = "file_writer"
+    FOLDER_WRITER = "folder_writer"
 
 
 class ExecutionStatus(str, Enum):

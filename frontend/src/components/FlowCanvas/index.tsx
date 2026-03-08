@@ -13,6 +13,7 @@ import {
   AINode,
   FileReaderNode,
   FileWriterNode,
+  FolderWriterNode,
 } from "../nodes";
 
 interface FlowCanvasProps {
@@ -69,6 +70,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     ai: AINode,
     file_reader: FileReaderNode,
     file_writer: FileWriterNode,
+    folder_writer: FolderWriterNode,
   };
 
   const handleNodesChange = useCallback(
@@ -161,7 +163,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         const fileDataJson = event.dataTransfer.getData("application/json");
         if (fileDataJson) {
           const fileData = JSON.parse(fileDataJson);
-          if (fileData && fileData.type === "file") {
+          // 支持文件和文件夹拖拽
+          if (
+            fileData &&
+            (fileData.type === "file" || fileData.type === "folder")
+          ) {
             // 计算拖拽位置在画布中的坐标
             if (reactFlowWrapper.current) {
               const rect = reactFlowWrapper.current.getBoundingClientRect();

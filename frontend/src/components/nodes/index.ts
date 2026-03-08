@@ -10,6 +10,9 @@ export { default as FileReaderNodeEditor } from "./FileNode/FileReaderNodeEditor
 export { default as FileWriterNode } from "./FileNode/FileWriterNode";
 export { default as FileWriterNodeConfig } from "./FileNode/FileWriterNodeConfig";
 export { default as FileWriterNodeEditor } from "./FileNode/FileWriterNodeEditor";
+export { default as FolderWriterNode } from "./FileNode/FolderWriterNode";
+export { default as FolderWriterNodeConfig } from "./FileNode/FolderWriterNodeConfig";
+export { default as FolderWriterNodeEditor } from "./FileNode/FolderWriterNodeEditor";
 export { default as FileSelector } from "./FileNode/FileSelector";
 export { default as WriteModeSelector } from "./FileNode/WriteModeSelector";
 export { default as AIPromptEditor } from "./FileNode/AIPromptEditor";

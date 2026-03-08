@@ -362,6 +362,8 @@ const WorkflowDetail: React.FC = () => {
             setIsExecuting(false);
             // 刷新执行历史记录
             loadExecutionData();
+            // 刷新文件系统数据（工作流可能创建了新文件）
+            loadFileSystemData();
           }
         } catch (err) {
           console.error("Failed to get execution status:", err);
@@ -383,10 +385,16 @@ const WorkflowDetail: React.FC = () => {
     fileData?: any,
   ) => {
     if (fileData) {
-      // 如果有文件数据，显示文件节点类型选择对话框
-      setDroppedFileData(fileData);
-      setDroppedFilePosition(position);
-      setShowFileNodeDialog(true);
+      // 如果有文件数据
+      if (fileData.type === "folder") {
+        // 如果是文件夹，直接创建文件夹写入节点
+        handleCreateNode("folderWriter", fileData, position);
+      } else {
+        // 如果是文件，显示文件节点类型选择对话框
+        setDroppedFileData(fileData);
+        setDroppedFilePosition(position);
+        setShowFileNodeDialog(true);
+      }
     } else {
       // 否则显示节点创建对话框
       setNewNodePosition(position);
@@ -408,7 +416,9 @@ const WorkflowDetail: React.FC = () => {
           ? "file_reader"
           : nodeType === "fileWriter"
             ? "file_writer"
-            : nodeType;
+            : nodeType === "folderWriter"
+              ? "folder_writer"
+              : nodeType;
 
       const nodeData: any = {
         node_type: backendNodeType,
@@ -437,6 +447,9 @@ const WorkflowDetail: React.FC = () => {
         nodeData.data.filePath = fileData?.path || "";
         nodeData.data.encoding = "utf-8";
         nodeData.data.overwrite = false;
+      } else if (nodeType === "folderWriter") {
+        nodeData.data.folderPath = fileData?.path || "";
+        nodeData.data.folderId = fileData?.id || "";
       }
 
       const newNode = await workflowApi.createNode(
@@ -476,6 +489,8 @@ const WorkflowDetail: React.FC = () => {
         return "文件读取节点";
       case "fileWriter":
         return "文件写入节点";
+      case "folderWriter":
+        return "文件夹写入节点";
       default:
         return "节点";
     }

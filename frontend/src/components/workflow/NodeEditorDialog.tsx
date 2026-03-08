@@ -3,8 +3,9 @@ import {
   AINodeEditor,
   FileReaderNodeEditor,
   FileWriterNodeEditor,
+  FolderWriterNodeEditor,
   StartNodeEditor,
-  EndNodeEditor
+  EndNodeEditor,
 } from "../nodes";
 
 interface NodeEditorDialogProps {
@@ -50,6 +51,16 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
       case "file_writer":
         return (
           <FileWriterNodeEditor
+            isOpen={isOpen}
+            node={node}
+            onSave={onSave}
+            onCancel={onCancel}
+          />
+        );
+      case "folderWriter":
+      case "folder_writer":
+        return (
+          <FolderWriterNodeEditor
             isOpen={isOpen}
             node={node}
             onSave={onSave}
