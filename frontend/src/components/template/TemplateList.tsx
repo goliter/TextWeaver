@@ -1,0 +1,141 @@
+import React, { useState, useEffect } from "react";
+import { getTemplates, deleteTemplate } from "@/api/template";
+import TemplateCard from "./TemplateCard";
+import UseTemplateDialog from "./UseTemplateDialog";
+import type { WorkflowTemplate } from "@/types/template";
+
+interface TemplateListProps {
+  onUseTemplate?: (flowId: number) => void;
+  onRefresh?: () => void;
+}
+
+const TemplateList: React.FC<TemplateListProps> = ({
+  onUseTemplate,
+  onRefresh,
+}) => {
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
+  const [showUseDialog, setShowUseDialog] = useState(false);
+
+  const loadTemplates = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getTemplates(true);
+      setTemplates(data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "加载模板列表失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const handleDelete = async (templateId: number) => {
+    if (!confirm("确定要删除这个模板吗？此操作不可撤销。")) {
+      return;
+    }
+
+    try {
+      await deleteTemplate(templateId);
+      loadTemplates();
+      onRefresh?.();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "删除模板失败");
+    }
+  };
+
+  const handleUse = (template: WorkflowTemplate) => {
+    setSelectedTemplate(template);
+    setShowUseDialog(true);
+  };
+
+  const handleUseSuccess = (flowId: number) => {
+    onUseTemplate?.(flowId);
+    loadTemplates();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <span className="ml-2 text-gray-600">加载中...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-500 mb-2">加载失败</div>
+        <p className="text-gray-500 text-sm">{error}</p>
+        <button
+          onClick={loadTemplates}
+          className="mt-4 px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
+        >
+          重试
+        </button>
+      </div>
+    );
+  }
+
+  if (templates.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+          <svg
+            className="w-8 h-8 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-1">暂无模板</h3>
+        <p className="text-gray-500 text-sm">
+          您还没有保存任何模板，可以在工作流详情页保存为模板
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {templates.map((template) => (
+          <TemplateCard
+            key={template.id}
+            template={template}
+            onClick={() => handleUse(template)}
+            onUse={() => handleUse(template)}
+            onDelete={() => handleDelete(template.id)}
+            showActions={true}
+          />
+        ))}
+      </div>
+
+      <UseTemplateDialog
+        isOpen={showUseDialog}
+        template={selectedTemplate}
+        onClose={() => {
+          setShowUseDialog(false);
+          setSelectedTemplate(null);
+        }}
+        onSuccess={handleUseSuccess}
+      />
+    </>
+  );
+};
+
+export default TemplateList;

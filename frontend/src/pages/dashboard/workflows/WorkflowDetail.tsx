@@ -8,6 +8,7 @@ import ExecutionStatus from "@/components/Inspector/ExecutionStatus";
 import { NodeTypeSelector } from "@/components/workflow/NodeTypeSelector";
 import NodeEditorDialog from "@/components/workflow/NodeEditorDialog";
 import { ConfirmDialog } from "@/components/common";
+import TemplateSaveDialog from "@/components/template/TemplateSaveDialog";
 import { workflowApi, executionApi } from "@/api/workflow";
 import { filesystemApi } from "@/api/filesystem";
 import { FileManager } from "@/components/filesystem/FileManager";
@@ -79,6 +80,8 @@ const WorkflowDetail: React.FC = () => {
     message: "",
     onConfirm: () => {},
   });
+  const [showSaveTemplateDialog, setShowSaveTemplateDialog] =
+    useState<boolean>(false);
 
   const handleBack = () => {
     navigate("/dashboard/workflows");
@@ -664,6 +667,25 @@ const WorkflowDetail: React.FC = () => {
         </div>
         <div className="flex items-center space-x-3">
           <button
+            onClick={() => setShowSaveTemplateDialog(true)}
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+              />
+            </svg>
+            <span>保存为模板</span>
+          </button>
+          <button
             onClick={handleExecute}
             disabled={isExecuting}
             className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
@@ -951,6 +973,17 @@ const WorkflowDetail: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 保存模板弹窗 */}
+      <TemplateSaveDialog
+        isOpen={showSaveTemplateDialog}
+        flowId={parseInt(workflowId || "0")}
+        flowName={workflow.name}
+        onClose={() => setShowSaveTemplateDialog(false)}
+        onSuccess={() => {
+          alert("模板保存成功！");
+        }}
+      />
     </div>
   );
 };

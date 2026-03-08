@@ -8,6 +8,7 @@ import RunPipeline from "./pages/dashboard/pipeline/RunPipeline";
 import TemplateLibrary from "./pages/dashboard/pipeline/TemplateLibrary";
 import WorkflowList from "./pages/dashboard/workflows/WorkflowList";
 import WorkflowDetail from "./pages/dashboard/workflows/WorkflowDetail";
+import TemplatesPage from "./pages/dashboard/templates";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
           { path: "workflows", element: <WorkflowList /> },
           { path: "run-pipeline", element: <RunPipeline /> },
           { path: "template-library", element: <TemplateLibrary /> },
+          { path: "templates", element: <TemplatesPage /> },
         ],
       },
       {

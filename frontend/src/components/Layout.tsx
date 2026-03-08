@@ -27,6 +27,12 @@ const Layout: React.FC = () => {
       icon: "⚙️",
     },
     {
+      id: "templates",
+      label: "模板管理",
+      path: "/dashboard/templates",
+      icon: "📋",
+    },
+    {
       id: "template-library",
       label: "模板库",
       path: "/dashboard/template-library",

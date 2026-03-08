@@ -15,3 +15,4 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     flows = relationship("Flow", back_populates="user")
+    templates = relationship("WorkflowTemplate", back_populates="user")
