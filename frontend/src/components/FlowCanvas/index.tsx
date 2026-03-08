@@ -7,11 +7,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ContextMenu, type MenuItem } from "@/components/common";
-import StartNode from "./nodes/StartNode";
-import EndNode from "./nodes/EndNode";
-import AINode from "./nodes/AINode";
-import FileReaderNode from "./nodes/FileReaderNode";
-import FileWriterNode from "./nodes/FileWriterNode";
+import {
+  StartNode,
+  EndNode,
+  AINode,
+  FileReaderNode,
+  FileWriterNode,
+} from "../nodes";
 
 interface FlowCanvasProps {
   flowId: number;

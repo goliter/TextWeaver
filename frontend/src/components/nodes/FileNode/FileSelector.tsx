@@ -16,7 +16,6 @@ const FileSelector: React.FC<FileSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 模拟文件列表（实际应该从API获取）
   const mockFiles = [
     { id: 1, name: "example.txt", path: "/data/example.txt" },
     { id: 2, name: "data.json", path: "/data/data.json" },

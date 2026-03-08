@@ -17,8 +17,7 @@ interface DataSourceManagerProps {
 
 const DataSourceManager: React.FC<DataSourceManagerProps> = ({
   topInputs,
-  leftInputs,
-  onVariableRename,
+  leftInputs
 }) => {
   return (
     <div className="space-y-4">
@@ -95,7 +94,7 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
         )}
       </div>
 
-      {(topInputs.length === 0 && leftInputs.length === 0) && (
+      {topInputs.length === 0 && leftInputs.length === 0 && (
         <div className="text-sm text-gray-500 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           <div className="flex items-start gap-2">
             <svg

@@ -815,12 +815,7 @@ const WorkflowDetail: React.FC = () => {
         <div className="w-80 border-l border-gray-200 bg-white">
           <Inspector activeTab={activeTab} onTabChange={setActiveTab}>
             {activeTab === "node" && (
-              <NodeConfig
-                node={selectedNode}
-                onNodeUpdate={handleNodeUpdate}
-                onDeleteNode={handleDeleteNode}
-                edges={edges}
-              />
+              <NodeConfig node={selectedNode} edges={edges} />
             )}
             {activeTab === "flow" && (
               <FlowConfig
