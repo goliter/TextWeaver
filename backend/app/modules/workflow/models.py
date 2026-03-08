@@ -80,7 +80,7 @@ class ExecutionLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     execution_id = Column(Integer, ForeignKey("executions.id"), nullable=False)
-    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
+    node_id = Column(Integer, ForeignKey("nodes.id", ondelete="SET NULL"), nullable=True)
     status = Column(String(20), nullable=False, default="pending")  # pending, running, success, error
     input_data = Column(JSON, nullable=True)
     output_data = Column(JSON, nullable=True)
