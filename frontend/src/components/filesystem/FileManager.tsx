@@ -316,11 +316,46 @@ export function FileManager({
 
   // 当files属性变化时，重置folderContents缓存
   useEffect(() => {
-    // 只有当files数组长度或内容发生变化时才重置缓存
-    if (files.length > 0) {
-      setFolderContents({});
-    }
-  }, [files.length]);
+    // 重置文件夹内容缓存，以便重新加载
+    setFolderContents({});
+  }, [files]);
+
+  // 当files属性变化时，自动刷新所有已展开的文件夹内容
+  useEffect(() => {
+    if (files.length === 0) return;
+
+    // 获取所有已展开的文件夹
+    const refreshExpandedFolders = async () => {
+      const folderIds = Array.from(expandedFolders);
+      if (folderIds.length === 0) return;
+
+      try {
+        setLoadingFolders(new Set(folderIds));
+        // 并行加载所有已展开的文件夹内容
+        const loadPromises = folderIds.map(async (folderId) => {
+          try {
+            const contents = await loadFolderContent(folderId);
+            return { folderId, contents };
+          } catch (error) {
+            console.error(`Failed to load folder ${folderId}:`, error);
+            return { folderId, contents: [] };
+          }
+        });
+
+        const results = await Promise.all(loadPromises);
+        const newFolderContents: { [key: number]: FileResponse[] } = {};
+        results.forEach(({ folderId, contents }) => {
+          newFolderContents[folderId] = contents;
+        });
+
+        setFolderContents(newFolderContents);
+      } finally {
+        setLoadingFolders(new Set());
+      }
+    };
+
+    refreshExpandedFolders();
+  }, [files]);
 
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState<{

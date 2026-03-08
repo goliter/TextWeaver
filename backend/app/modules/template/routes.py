@@ -236,6 +236,49 @@ def use_template(
         )
 
 
+@router.post("/{template_id}/add-to-mine", response_model=schemas.WorkflowTemplateResponse, status_code=status.HTTP_201_CREATED)
+def add_template_to_mine(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    添加模板到我的模板
+    
+    复制公开模板到当前用户的模板列表
+    """
+    # 获取模板详情
+    template = crud.get_template_detail(db, template_id)
+    
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="模板不存在"
+        )
+    
+    # 检查模板是否公开
+    if not template.is_public:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只能添加公开模板到我的模板"
+        )
+    
+    # 创建新模板
+    template_data = schemas.WorkflowTemplateCreate(
+        name=template.name,
+        description=template.description,
+        tags=template.tags,
+        source_flow_id=None  # 从模板复制，不是从工作流
+    )
+    
+    # 创建新模板
+    new_template = crud.create_template_from_existing(
+        db, template_data, current_user.id, template.id
+    )
+    
+    return new_template
+
+
 @router.put("/{template_id}", response_model=schemas.WorkflowTemplateResponse)
 def update_template(
     template_id: int,
@@ -279,19 +322,17 @@ def delete_template(
 
 # ==================== 模板分享相关接口 ====================
 
-@router.post("/{template_id}/share", response_model=schemas.TemplateShareResponse)
-def create_share(
+@router.post("/{template_id}/share", response_model=schemas.WorkflowTemplateResponse)
+def share_template(
     template_id: int,
-    share_data: schemas.TemplateShareCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    创建模板分享
-    """
-    from app.modules.template.models import TemplateShare, SharePermission
-    import uuid
+    分享模板到模板市场
     
+    将模板设置为公开，使其出现在模板市场中
+    """
     # 验证模板存在且属于当前用户
     template = crud.get_template(db, template_id, current_user.id)
     if not template:
@@ -300,89 +341,25 @@ def create_share(
             detail="模板不存在或无权限"
         )
     
-    # 创建分享记录
-    share_token = str(uuid.uuid4())
-    db_share = TemplateShare(
-        template_id=template_id,
-        share_token=share_token,
-        permission=SharePermission(share_data.permission),
-        expires_at=share_data.expires_at
-    )
-    db.add(db_share)
-    
-    # 更新模板分享次数
-    template.share_count += 1
-    
+    # 设置模板为公开
+    template.is_public = True
     db.commit()
-    db.refresh(db_share)
+    db.refresh(template)
     
-    # 构建分享链接
-    share_url = f"/shared/template/{share_token}"
-    
-    return {
-        **db_share.__dict__,
-        "share_url": share_url
-    }
-
-
-@router.get("/shared/{share_token}", response_model=schemas.SharedTemplateResponse)
-def get_shared_template(
-    share_token: str,
-    db: Session = Depends(get_db)
-):
-    """
-    通过分享链接获取模板
-    """
-    from app.modules.template.models import TemplateShare
-    from datetime import datetime
-    
-    # 查找分享记录
-    share = db.query(TemplateShare).filter(
-        TemplateShare.share_token == share_token
-    ).first()
-    
-    if not share:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="分享链接不存在"
-        )
-    
-    # 检查是否过期
-    if share.expires_at and share.expires_at < datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE,
-            detail="分享链接已过期"
-        )
-    
-    # 增加访问次数
-    share.access_count += 1
-    db.commit()
-    
-    # 获取模板详情
-    template = crud.get_template_detail(db, share.template_id)
-    if not template:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="模板不存在"
-        )
-    
-    return {
-        "template": template,
-        "share_info": share
-    }
+    return template
 
 
 @router.delete("/{template_id}/share", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_share(
+def unshare_template(
     template_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    撤销模板分享
-    """
-    from app.modules.template.models import TemplateShare
+    取消分享模板
     
+    将模板从模板市场中移除（设置为私有）
+    """
     # 验证模板存在且属于当前用户
     template = crud.get_template(db, template_id, current_user.id)
     if not template:
@@ -391,10 +368,8 @@ def revoke_share(
             detail="模板不存在或无权限"
         )
     
-    # 删除所有分享记录
-    db.query(TemplateShare).filter(
-        TemplateShare.template_id == template_id
-    ).delete()
-    
+    # 设置模板为私有
+    template.is_public = False
     db.commit()
+    
     return None

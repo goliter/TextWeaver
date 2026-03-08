@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { getTemplates, deleteTemplate } from "@/api/template";
+import {
+  getTemplates,
+  deleteTemplate,
+  shareTemplate,
+  unshareTemplate,
+} from "@/api/template";
 import TemplateCard from "./TemplateCard";
 import UseTemplateDialog from "./UseTemplateDialog";
 import type { WorkflowTemplate } from "@/types/template";
@@ -16,14 +21,18 @@ const TemplateList: React.FC<TemplateListProps> = ({
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<WorkflowTemplate | null>(null);
   const [showUseDialog, setShowUseDialog] = useState(false);
+  const [sharingTemplates, setSharingTemplates] = useState<Set<number>>(
+    new Set(),
+  );
 
   const loadTemplates = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getTemplates(true);
+      const data = await getTemplates(false);
       setTemplates(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "加载模板列表失败");
@@ -58,6 +67,41 @@ const TemplateList: React.FC<TemplateListProps> = ({
   const handleUseSuccess = (flowId: number) => {
     onUseTemplate?.(flowId);
     loadTemplates();
+  };
+
+  const handleShare = async (templateId: number) => {
+    setSharingTemplates((prev) => new Set(prev).add(templateId));
+    try {
+      await shareTemplate(templateId);
+      loadTemplates();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "分享模板失败");
+    } finally {
+      setSharingTemplates((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(templateId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleUnshare = async (templateId: number) => {
+    if (!confirm("确定要取消分享这个模板吗？它将不再出现在模板市场中。")) {
+      return;
+    }
+    setSharingTemplates((prev) => new Set(prev).add(templateId));
+    try {
+      await unshareTemplate(templateId);
+      loadTemplates();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "取消分享失败");
+    } finally {
+      setSharingTemplates((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(templateId);
+        return newSet;
+      });
+    }
   };
 
   if (loading) {
@@ -120,7 +164,11 @@ const TemplateList: React.FC<TemplateListProps> = ({
             onClick={() => handleUse(template)}
             onUse={() => handleUse(template)}
             onDelete={() => handleDelete(template.id)}
+            onShare={() => handleShare(template.id)}
+            onUnshare={() => handleUnshare(template.id)}
             showActions={true}
+            showShareButton={true}
+            isSharing={sharingTemplates.has(template.id)}
           />
         ))}
       </div>

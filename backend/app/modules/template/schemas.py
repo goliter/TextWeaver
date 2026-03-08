@@ -6,13 +6,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from enum import Enum
-
-
-class SharePermission(str, Enum):
-    """分享权限枚举"""
-    PUBLIC = "public"
-    PRIVATE = "private"
 
 
 # ==================== 基础 Schema ====================
@@ -102,7 +95,7 @@ class WorkflowTemplateBase(BaseModel):
 
 class WorkflowTemplateCreate(WorkflowTemplateBase):
     """创建模板请求"""
-    source_flow_id: int = Field(..., description="来源工作流ID")
+    source_flow_id: Optional[int] = Field(None, description="来源工作流ID")
 
 
 class WorkflowTemplateUpdate(BaseModel):
@@ -119,7 +112,6 @@ class WorkflowTemplateResponse(WorkflowTemplateBase):
     user_id: int
     source_flow_id: Optional[int]
     use_count: int
-    share_count: int
     is_public: bool
     created_at: datetime
     updated_at: Optional[datetime]
@@ -162,38 +154,6 @@ class UseTemplateResponse(BaseModel):
     """使用模板响应"""
     flow_id: int = Field(..., description="新创建的工作流ID")
     message: str = Field(default="工作流创建成功")
-
-
-# ==================== 模板分享 Schema ====================
-
-class TemplateShareBase(BaseModel):
-    """模板分享基础 Schema"""
-    permission: SharePermission = Field(default=SharePermission.PRIVATE, description="分享权限")
-    expires_at: Optional[datetime] = Field(None, description="过期时间")
-
-
-class TemplateShareCreate(TemplateShareBase):
-    """创建分享请求"""
-    pass
-
-
-class TemplateShareResponse(TemplateShareBase):
-    """分享响应"""
-    id: int
-    template_id: int
-    share_token: str
-    access_count: int
-    created_at: datetime
-    share_url: Optional[str] = Field(None, description="分享链接")
-
-    class Config:
-        from_attributes = True
-
-
-class SharedTemplateResponse(BaseModel):
-    """通过分享链接获取的模板响应"""
-    template: WorkflowTemplateDetail
-    share_info: TemplateShareResponse
 
 
 # ==================== 模板市场 Schema ====================

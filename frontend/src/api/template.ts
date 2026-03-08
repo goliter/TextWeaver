@@ -10,9 +10,6 @@ import type {
   CreateTemplateRequest,
   UseTemplateRequest,
   UseTemplateResponse,
-  TemplateShareRequest,
-  TemplateShareResponse,
-  SharedTemplateResponse,
   TemplateMarketList,
   TemplateMarketFilter,
 } from "@/types/template";
@@ -22,7 +19,7 @@ import type {
  * @param data 模板创建数据
  */
 export const createTemplate = async (
-  data: CreateTemplateRequest
+  data: CreateTemplateRequest,
 ): Promise<WorkflowTemplate> => {
   const response = await api.post("/templates", data);
   return response.data;
@@ -33,7 +30,7 @@ export const createTemplate = async (
  * @param includePublic 是否包含公开模板
  */
 export const getTemplates = async (
-  includePublic: boolean = true
+  includePublic: boolean = true,
 ): Promise<WorkflowTemplate[]> => {
   const response = await api.get("/templates", {
     params: { include_public: includePublic },
@@ -46,9 +43,20 @@ export const getTemplates = async (
  * @param templateId 模板ID
  */
 export const getTemplateDetail = async (
-  templateId: number
+  templateId: number,
 ): Promise<WorkflowTemplateDetail> => {
   const response = await api.get(`/templates/${templateId}`);
+  return response.data;
+};
+
+/**
+ * 添加模板到我的模板
+ * @param templateId 模板ID
+ */
+export const addTemplateToMine = async (
+  templateId: number,
+): Promise<WorkflowTemplate> => {
+  const response = await api.post(`/templates/${templateId}/add-to-mine`);
   return response.data;
 };
 
@@ -59,7 +67,7 @@ export const getTemplateDetail = async (
  */
 export const updateTemplate = async (
   templateId: number,
-  data: Partial<WorkflowTemplate>
+  data: Partial<WorkflowTemplate>,
 ): Promise<WorkflowTemplate> => {
   const response = await api.put(`/templates/${templateId}`, data);
   return response.data;
@@ -80,50 +88,38 @@ export const deleteTemplate = async (templateId: number): Promise<void> => {
  */
 export const usetemplate = async (
   templateId: number,
-  data: UseTemplateRequest
+  data: UseTemplateRequest,
 ): Promise<UseTemplateResponse> => {
   const response = await api.post(`/templates/${templateId}/use`, data);
   return response.data;
 };
 
 /**
- * 分享模板
+ * 分享模板到模板市场
  * @param templateId 模板ID
- * @param data 分享数据
  */
 export const shareTemplate = async (
   templateId: number,
-  data: TemplateShareRequest
-): Promise<TemplateShareResponse> => {
-  const response = await api.post(`/templates/${templateId}/share`, data);
+): Promise<WorkflowTemplate> => {
+  const response = await api.post(`/templates/${templateId}/share`);
   return response.data;
 };
 
 /**
- * 撤销模板分享
+ * 取消分享模板
  * @param templateId 模板ID
  */
-export const revokeShare = async (templateId: number): Promise<void> => {
+export const unshareTemplate = async (templateId: number): Promise<void> => {
   await api.delete(`/templates/${templateId}/share`);
 };
 
-/**
- * 通过分享链接获取模板
- * @param shareToken 分享令牌
- */
-export const getSharedTemplate = async (
-  shareToken: string
-): Promise<SharedTemplateResponse> => {
-  const response = await api.get(`/templates/shared/${shareToken}`);
-  return response.data;
-};
 
 /**
  * 获取模板市场列表
  * @param filter 筛选条件
  */
 export const getTemplateMarket = async (
-  filter: TemplateMarketFilter = {}
+  filter: TemplateMarketFilter = {},
 ): Promise<TemplateMarketList> => {
   const response = await api.get("/templates/market", {
     params: filter,

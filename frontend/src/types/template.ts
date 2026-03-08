@@ -49,7 +49,6 @@ export interface WorkflowTemplate {
   user_id: number;
   source_flow_id?: number;
   use_count: number;
-  share_count: number;
   is_public: boolean;
   created_at: string;
   updated_at?: string;
@@ -78,31 +77,6 @@ export interface UseTemplateRequest {
 export interface UseTemplateResponse {
   flow_id: number;
   message: string;
-}
-
-// ==================== 分享类型 ====================
-
-export type SharePermission = "public" | "private";
-
-export interface TemplateShareRequest {
-  permission: SharePermission;
-  expires_at?: string;
-}
-
-export interface TemplateShareResponse {
-  id: number;
-  template_id: number;
-  share_token: string;
-  permission: SharePermission;
-  expires_at?: string;
-  access_count: number;
-  created_at: string;
-  share_url: string;
-}
-
-export interface SharedTemplateResponse {
-  template: WorkflowTemplateDetail;
-  share_info: TemplateShareResponse;
 }
 
 // ==================== 市场类型 ====================

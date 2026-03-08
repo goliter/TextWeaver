@@ -10,12 +10,6 @@ from app.core.database import Base
 import enum
 
 
-class SharePermission(str, enum.Enum):
-    """分享权限枚举"""
-    PUBLIC = "public"      # 公开分享
-    PRIVATE = "private"    # 私有分享（需要链接）
-
-
 class WorkflowTemplate(Base):
     """工作流模板主表"""
     __tablename__ = "workflow_templates"
@@ -31,10 +25,9 @@ class WorkflowTemplate(Base):
     
     # 统计信息
     use_count = Column(Integer, default=0)  # 使用次数
-    share_count = Column(Integer, default=0)  # 分享次数
     
     # 状态
-    is_public = Column(Boolean, default=False)  # 是否公开
+    is_public = Column(Boolean, default=False)  # 是否公开（分享后变为公开）
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -44,7 +37,6 @@ class WorkflowTemplate(Base):
     nodes = relationship("TemplateNode", back_populates="template", cascade="all, delete-orphan")
     edges = relationship("TemplateEdge", back_populates="template", cascade="all, delete-orphan")
     files = relationship("TemplateFile", back_populates="template", cascade="all, delete-orphan")
-    shares = relationship("TemplateShare", back_populates="template", cascade="all, delete-orphan")
 
 
 class TemplateNode(Base):
@@ -118,26 +110,3 @@ class TemplateFile(Base):
     # 关系
     template = relationship("WorkflowTemplate", back_populates="files")
     parent = relationship("TemplateFile", remote_side=[id], backref="children")
-
-
-class TemplateShare(Base):
-    """模板分享表"""
-    __tablename__ = "template_shares"
-
-    id = Column(Integer, primary_key=True, index=True)
-    template_id = Column(Integer, ForeignKey("workflow_templates.id"), nullable=False)
-    
-    # 分享信息
-    share_token = Column(String(255), unique=True, nullable=False, index=True)
-    permission = Column(Enum(SharePermission), default=SharePermission.PRIVATE)
-    
-    # 过期时间（可选）
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-    
-    # 访问统计
-    access_count = Column(Integer, default=0)
-    
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # 关系
-    template = relationship("WorkflowTemplate", back_populates="shares")

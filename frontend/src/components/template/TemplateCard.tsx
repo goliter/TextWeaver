@@ -6,7 +6,14 @@ interface TemplateCardProps {
   onClick?: () => void;
   onUse?: () => void;
   onDelete?: () => void;
+  onShare?: () => void;
+  onUnshare?: () => void;
+  onAddToMyTemplates?: () => void;
   showActions?: boolean;
+  showAddToMyTemplates?: boolean;
+  showShareButton?: boolean;
+  isAdding?: boolean;
+  isSharing?: boolean;
 }
 
 const TemplateCard: React.FC<TemplateCardProps> = ({
@@ -14,7 +21,14 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   onClick,
   onUse,
   onDelete,
+  onShare,
+  onUnshare,
+  onAddToMyTemplates,
   showActions = true,
+  showAddToMyTemplates = false,
+  showShareButton = false,
+  isAdding = false,
+  isSharing = false,
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -68,16 +82,20 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
       {/* 统计信息 */}
       <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
         <span className="flex items-center gap-1">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
           </svg>
           使用 {template.use_count} 次
-        </span>
-        <span className="flex items-center gap-1">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-          </svg>
-          分享 {template.share_count} 次
         </span>
       </div>
 
@@ -89,25 +107,77 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
       {/* 操作按钮 */}
       {showActions && (
         <div className="flex gap-2 pt-3 border-t border-gray-100">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUse?.();
-            }}
-            className="flex-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-          >
-            使用模板
-          </button>
-          {onDelete && (
+          {showAddToMyTemplates ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete?.();
+                onAddToMyTemplates?.();
               }}
-              className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
+              className="flex-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={isAdding}
             >
-              删除
+              {isAdding ? "添加中..." : "添加到我的模板"}
             </button>
+          ) : showShareButton ? (
+            <>
+              {template.is_public ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnshare?.();
+                  }}
+                  className="flex-1 px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors disabled:bg-gray-200 disabled:cursor-not-allowed"
+                  disabled={isSharing}
+                >
+                  {isSharing ? "处理中..." : "取消分享"}
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare?.();
+                  }}
+                  className="flex-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={isSharing}
+                >
+                  {isSharing ? "处理中..." : "分享"}
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.();
+                  }}
+                  className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
+                >
+                  删除
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUse?.();
+                }}
+                className="flex-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+              >
+                使用模板
+              </button>
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.();
+                  }}
+                  className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
+                >
+                  删除
+                </button>
+              )}
+            </>
           )}
         </div>
       )}

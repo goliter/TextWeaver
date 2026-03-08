@@ -31,7 +31,6 @@ def create_template(
         user_id=user_id,
         source_flow_id=template_data.source_flow_id,
         use_count=0,
-        share_count=0,
         is_public=False
     )
     db.add(db_template)
@@ -261,3 +260,136 @@ def increment_use_count(db: Session, template_id: int) -> None:
     if template:
         template.use_count += 1
         db.commit()
+
+
+def create_template_from_existing(
+    db: Session,
+    template_data: schemas.WorkflowTemplateCreate,
+    user_id: int,
+    source_template_id: int
+) -> models.WorkflowTemplate:
+    """
+    从现有模板创建新模板
+    
+    复制现有模板的节点、边和文件系统到新模板
+    """
+    # 创建模板主记录
+    db_template = models.WorkflowTemplate(
+        name=template_data.name,
+        description=template_data.description,
+        tags=template_data.tags,
+        user_id=user_id,
+        source_flow_id=None,
+        use_count=0,
+        is_public=False
+    )
+    db.add(db_template)
+    db.flush()  # 获取模板ID
+    
+    # 复制模板节点
+    _copy_template_nodes_to_new_template(db, source_template_id, db_template.id)
+    
+    # 复制模板边
+    _copy_template_edges_to_new_template(db, source_template_id, db_template.id)
+    
+    # 复制模板文件系统
+    _copy_template_files_to_new_template(db, source_template_id, db_template.id)
+    
+    db.commit()
+    db.refresh(db_template)
+    return db_template
+
+
+def _copy_template_nodes_to_new_template(db: Session, source_template_id: int, target_template_id: int) -> None:
+    """复制模板节点到新模板"""
+    source_nodes = db.query(models.TemplateNode).filter(
+        models.TemplateNode.template_id == source_template_id
+    ).all()
+    
+    node_id_mapping = {}  # 用于后续边的映射
+    
+    for source_node in source_nodes:
+        template_node = models.TemplateNode(
+            template_id=target_template_id,
+            node_type=source_node.node_type,
+            name=source_node.name,
+            position=source_node.position,
+            data=source_node.data,
+            original_node_id=source_node.original_node_id
+        )
+        db.add(template_node)
+        db.flush()
+        node_id_mapping[source_node.id] = template_node.id
+
+
+def _copy_template_edges_to_new_template(db: Session, source_template_id: int, target_template_id: int) -> None:
+    """复制模板边到新模板"""
+    source_edges = db.query(models.TemplateEdge).filter(
+        models.TemplateEdge.template_id == source_template_id
+    ).all()
+    
+    # 获取节点ID映射
+    source_nodes = db.query(models.TemplateNode).filter(
+        models.TemplateNode.template_id == source_template_id
+    ).all()
+    
+    node_id_mapping = {}
+    target_nodes = db.query(models.TemplateNode).filter(
+        models.TemplateNode.template_id == target_template_id
+    ).all()
+    
+    # 构建源节点ID到目标节点ID的映射
+    for source_node, target_node in zip(source_nodes, target_nodes):
+        node_id_mapping[source_node.id] = target_node.id
+    
+    for source_edge in source_edges:
+        # 查找对应的模板节点ID
+        source_template_node_id = node_id_mapping.get(source_edge.source_node_id)
+        target_template_node_id = node_id_mapping.get(source_edge.target_node_id)
+        
+        if source_template_node_id and target_template_node_id:
+            template_edge = models.TemplateEdge(
+                template_id=target_template_id,
+                source_node_id=source_template_node_id,
+                target_node_id=target_template_node_id,
+                source_handle=source_edge.source_handle,
+                target_handle=source_edge.target_handle,
+                original_edge_id=source_edge.original_edge_id
+            )
+            db.add(template_edge)
+
+
+def _copy_template_files_to_new_template(db: Session, source_template_id: int, target_template_id: int) -> None:
+    """复制模板文件系统到新模板"""
+    source_files = db.query(models.TemplateFile).filter(
+        models.TemplateFile.template_id == source_template_id
+    ).all()
+    
+    file_id_mapping = {}  # 用于处理父子关系
+    
+    # 首先创建所有文件记录（不处理父子关系）
+    for source_file in source_files:
+        template_file = models.TemplateFile(
+            template_id=target_template_id,
+            name=source_file.name,
+            type=source_file.type,
+            content=source_file.content,
+            size=source_file.size,
+            path=source_file.path,
+            original_file_id=source_file.original_file_id
+        )
+        db.add(template_file)
+        db.flush()
+        file_id_mapping[source_file.id] = template_file.id
+    
+    # 然后更新父子关系
+    for source_file in source_files:
+        if source_file.parent_id and source_file.parent_id in file_id_mapping:
+            template_file_id = file_id_mapping[source_file.id]
+            parent_template_file_id = file_id_mapping[source_file.parent_id]
+            
+            template_file = db.query(models.TemplateFile).filter(
+                models.TemplateFile.id == template_file_id
+            ).first()
+            if template_file:
+                template_file.parent_id = parent_template_file_id
