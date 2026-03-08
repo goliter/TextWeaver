@@ -269,24 +269,42 @@ class AINodeExecutor(BaseNodeExecutor):
         # 处理上侧输入（一般数据）
         top_input = inputs.get("top")
         if top_input is not None:
-            # 使用与前端一致的变量名格式: input_{source_node_id}
-            if "top" in edge_map:
-                source_node_id = edge_map["top"].source_node_id
-                var_name = f"input_{source_node_id}"
-                variables[var_name] = top_input
+            # 处理多个输入的情况
+            if isinstance(top_input, list):
+                # 为每个输入创建变量名
+                top_edges = [edge for edge in input_edges if edge.target_handle == "top"]
+                for i, (data, edge) in enumerate(zip(top_input, top_edges)):
+                    source_node_id = edge.source_node_id
+                    var_name = f"input_{source_node_id}"
+                    variables[var_name] = data
             else:
-                variables["input"] = top_input
+                # 单个输入的情况
+                if "top" in edge_map:
+                    source_node_id = edge_map["top"].source_node_id
+                    var_name = f"input_{source_node_id}"
+                    variables[var_name] = top_input
+                else:
+                    variables["input"] = top_input
         
         # 处理左侧输入（文件数据）
         left_input = inputs.get("left")
         if left_input is not None:
-            # 使用与前端一致的变量名格式: file_{source_node_id}
-            if "left" in edge_map:
-                source_node_id = edge_map["left"].source_node_id
-                var_name = f"file_{source_node_id}"
-                variables[var_name] = left_input
+            # 处理多个输入的情况
+            if isinstance(left_input, list):
+                # 为每个输入创建变量名
+                left_edges = [edge for edge in input_edges if edge.target_handle == "left"]
+                for i, (data, edge) in enumerate(zip(left_input, left_edges)):
+                    source_node_id = edge.source_node_id
+                    var_name = f"file_{source_node_id}"
+                    variables[var_name] = data
             else:
-                variables["file"] = left_input
+                # 单个输入的情况
+                if "left" in edge_map:
+                    source_node_id = edge_map["left"].source_node_id
+                    var_name = f"file_{source_node_id}"
+                    variables[var_name] = left_input
+                else:
+                    variables["file"] = left_input
         
         # 获取提示词
         prompt = node.data.get("prompt", "")

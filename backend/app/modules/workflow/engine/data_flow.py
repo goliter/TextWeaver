@@ -58,7 +58,7 @@ class DataFlowManager:
             node_id: 节点ID
         
         Returns:
-            输入数据字典，key为连接点名称
+            输入数据字典，key为连接点名称，value可能是单个值或列表（当多个边连接到同一端口时）
         """
         inputs = {}
         
@@ -76,7 +76,16 @@ class DataFlowManager:
             if source_data is not None:
                 # 使用目标连接点作为key
                 target_handle = edge.target_handle or "top"  # 默认输入到顶部
-                inputs[target_handle] = source_data
+                
+                # 如果该连接点已有数据，转换为列表
+                if target_handle in inputs:
+                    existing_data = inputs[target_handle]
+                    if isinstance(existing_data, list):
+                        existing_data.append(source_data)
+                    else:
+                        inputs[target_handle] = [existing_data, source_data]
+                else:
+                    inputs[target_handle] = source_data
         
         return inputs
     
