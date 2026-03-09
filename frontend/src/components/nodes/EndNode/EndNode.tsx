@@ -6,34 +6,49 @@ type EndNodeProps = Node<{ status?: string }, "end">;
 const EndNode: React.FC<EndNodeProps> = ({ selected, data }) => {
   const status = data?.status || "idle";
 
-  // 根据状态获取颜色
-  const getStatusColor = (status: string) => {
+
+  // 根据状态获取背景颜色
+  const getStatusBackgroundColor = (status: string) => {
     switch (status) {
       case "running":
-        return "bg-yellow-500";
+        return "#fffbeb";
       case "success":
-        return "bg-green-500";
+        return "#ecfdf5";
       case "error":
-        return "bg-red-500";
+        return "#fef2f2";
       default:
-        return "bg-green-500";
+        return selected ? "#dcfce7" : "#ffffff";
+    }
+  };
+
+  // 根据状态获取边框颜色
+  const getStatusBorderColor = (status: string) => {
+    switch (status) {
+      case "running":
+        return "#f59e0b";
+      case "success":
+        return "#10b981";
+      case "error":
+        return "#ef4444";
+      default:
+        return selected ? "#3b82f6" : "#e5e7eb";
     }
   };
 
   return (
     <div
-      className={`w-40 p-3 rounded-lg shadow-md border-2 ${selected ? "bg-green-100 border-blue-500" : "bg-white border-gray-200"}`}
+      className="w-40 p-3 rounded-lg shadow-md border-2"
       style={{
         outline: "none",
         boxShadow: "none",
-        border: selected ? "2px solid #3b82f6" : "2px solid #e5e7eb",
+        border: `2px solid ${getStatusBorderColor(status)}`,
         borderRadius: "0.5rem",
-        backgroundColor: selected ? "#dcfce7" : "#ffffff",
+        backgroundColor: getStatusBackgroundColor(status),
+        transition: "all 0.3s ease",
       }}
     >
       <Handle type="target" position={Position.Top} />
-      <div className="flex items-center gap-2">
-        <div className={`w-3 h-3 rounded-full ${getStatusColor(status)}`} />
+      <div className="flex items-center">
         <span className="font-medium text-gray-900">结束</span>
       </div>
     </div>

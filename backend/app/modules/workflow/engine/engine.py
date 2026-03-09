@@ -275,7 +275,7 @@ class ExecutionEngine:
         try:
             # 推送节点开始执行状态
             loop = get_or_create_event_loop()
-            asyncio.run_coroutine_threadsafe(send_node_status(execution_id, node.id, "start"), loop)
+            asyncio.run_coroutine_threadsafe(send_node_status(execution_id, node.id, "running"), loop)
             
             # 更新日志状态为运行中
             inputs = data_flow.get_node_inputs(node.id)
