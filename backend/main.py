@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 # 导入核心组件和路由
 from app.core.database import Base, engine
 from app.routes.main import api_router
+from app.routes.websocket_routes import router as websocket_router
 
 # 加载环境变量
 load_dotenv()
@@ -27,6 +28,7 @@ app.add_middleware(
 
 # 注册API路由
 app.include_router(api_router)
+app.include_router(websocket_router)
 
 # 根路由
 @app.get("/")

@@ -30,6 +30,10 @@ export const useAuthStore = create<AuthStore>()(
       login: async (username: string, password: string) => {
         try {
           const response = await authApi.login(username, password);
+          // 保存 token 到 localStorage
+          if (response.access_token) {
+            localStorage.setItem("token", response.access_token);
+          }
           set({
             token: response.access_token,
             user: response.user,
@@ -55,6 +59,8 @@ export const useAuthStore = create<AuthStore>()(
 
       // 登出
       logout: () => {
+        // 从 localStorage 中删除 token
+        localStorage.removeItem("token");
         set({
           token: null,
           user: null,
@@ -103,6 +109,6 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
-    }
-  )
+    },
+  ),
 );

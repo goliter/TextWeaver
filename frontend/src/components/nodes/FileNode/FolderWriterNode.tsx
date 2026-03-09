@@ -7,12 +7,28 @@ interface FolderWriterNodeProps {
 }
 
 const FolderWriterNode: React.FC<FolderWriterNodeProps> = ({ data, selected }) => {
+  const status = data?.status || 'idle';
+  
+  // 根据状态获取颜色
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'running':
+        return 'text-yellow-500';
+      case 'success':
+        return 'text-green-500';
+      case 'error':
+        return 'text-red-500';
+      default:
+        return 'text-indigo-600';
+    }
+  };
+
   return (
     <div
       className={`w-40 p-3 rounded-lg border-2 ${selected ? "border-indigo-500 bg-indigo-50" : "border-gray-300 bg-white"} transition-all duration-200`}
     >
       <div className="flex flex-col items-center">
-        <div className="text-2xl mb-2 text-indigo-600">📁</div>
+        <div className={`text-2xl mb-2 ${getStatusColor(status)}`}>📁</div>
         <div className="text-sm font-medium text-center text-gray-900">
           文件夹写入
         </div>

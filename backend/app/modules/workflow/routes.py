@@ -253,9 +253,60 @@ def execute_workflow(
     # 获取输入数据
     inputs = execute_request.inputs if execute_request else {}
     
-    # 创建执行引擎并执行工作流
+    # 检查是否有预创建的执行记录ID
+    execution_id = execute_request.execution_id if execute_request and hasattr(execute_request, 'execution_id') else None
+    
+    # 创建执行引擎
     execution_engine = engine.ExecutionEngine(db)
-    execution = execution_engine.execute_workflow(flow_id=flow_id, user_id=current_user.id, inputs=inputs)
+    
+    # 同步创建执行记录
+    if execution_id:
+        # 使用预创建的执行记录
+        execution = crud.get_execution(db, execution_id=execution_id, user_id=current_user.id)
+        if not execution:
+            raise ValueError(f"Execution with id {execution_id} not found")
+    else:
+        # 创建新的执行记录
+        execution = crud.create_execution(db, flow_id=flow_id, user_id=current_user.id)
+    
+    # 异步执行工作流
+    import threading
+    def run_workflow():
+        try:
+            # 执行工作流
+            execution_engine.execute_workflow_async(flow_id=flow_id, user_id=current_user.id, inputs=inputs, execution_id=execution.id)
+        except Exception as e:
+            import logging
+            logging.error(f"Error executing workflow: {str(e)}")
+    
+    # 启动线程执行工作流
+    thread = threading.Thread(target=run_workflow, daemon=True)
+    thread.start()
+    
+    return {
+        "execution_id": execution.id,
+        "status": "running",
+        "start_time": execution.start_time
+    }
+
+
+@router.post("/{flow_id}/prepare-execution", response_model=schemas.WorkflowExecuteResponse)
+def prepare_execution(
+    flow_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """预创建执行记录"""
+    # 验证工作流存在
+    flow = crud.get_flow(db, flow_id=flow_id, user_id=current_user.id)
+    if not flow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workflow not found"
+        )
+    
+    # 预创建执行记录
+    execution = crud.create_execution(db, flow_id=flow_id, user_id=current_user.id)
     
     return {
         "execution_id": execution.id,

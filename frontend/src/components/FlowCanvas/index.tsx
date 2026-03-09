@@ -20,6 +20,9 @@ interface FlowCanvasProps {
   flowId: number;
   nodes: any[];
   edges: any[];
+  nodeStatuses?: {
+    [nodeId: string]: "idle" | "running" | "success" | "error";
+  };
   onNodesChange: (nodes: any[]) => void;
   onEdgesChange: (edges: any[]) => void;
   onNodeSelect: (nodeId: string) => void;
@@ -44,6 +47,7 @@ type ContextMenuType = "canvas" | "edge" | "node" | null;
 const FlowCanvas: React.FC<FlowCanvasProps> = ({
   nodes,
   edges,
+  nodeStatuses = {},
   onNodesChange,
   onEdgesChange,
   onNodeSelect,
@@ -354,7 +358,13 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       onDragOver={handlePaneDragOver}
     >
       <ReactFlow
-        nodes={nodes}
+        nodes={nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            status: nodeStatuses[node.id] || "idle",
+          },
+        }))}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={handleNodesChange}

@@ -125,6 +125,15 @@ export const workflowApi = {
     return response.data;
   },
 
+  prepareExecution: async (
+    flowId: number,
+  ): Promise<WorkflowExecuteResponse> => {
+    const response = await api.post<WorkflowExecuteResponse>(
+      `/workflows/${flowId}/prepare-execution`,
+    );
+    return response.data;
+  },
+
   getExecutionHistory: async (
     flowId: number,
     skip: number = 0,

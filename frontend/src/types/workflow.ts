@@ -120,6 +120,7 @@ export interface ExecutionLogResponse extends ExecutionLogBase {
 
 export interface WorkflowExecuteRequest {
   inputs?: Record<string, any>;
+  execution_id?: number;
 }
 
 export interface WorkflowExecuteResponse {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import FlowCanvas from "@/components/FlowCanvas";
 import Inspector from "@/components/Inspector";
@@ -13,6 +13,8 @@ import { workflowApi, executionApi } from "@/api/workflow";
 import { filesystemApi } from "@/api/filesystem";
 import { FileManager } from "@/components/filesystem/FileManager";
 import { FileViewer } from "@/components/filesystem/FileViewer";
+import { useWebSocket } from "@/services/websocket";
+import { getToken } from "@/utils/auth";
 
 const WorkflowDetail: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>();
@@ -66,6 +68,23 @@ const WorkflowDetail: React.FC = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [filesLoading, setFilesLoading] = useState<boolean>(false);
   const [workflowRootFolder, setWorkflowRootFolder] = useState<any>(null);
+
+  // 节点状态管理
+  const [nodeStatuses, setNodeStatuses] = useState<{
+    [nodeId: string]: "idle" | "running" | "success" | "error";
+  }>({});
+
+  // 当前执行ID
+  const [currentExecutionId, setCurrentExecutionId] = useState<number | null>(
+    null,
+  );
+
+  // WebSocket连接
+  const token = getToken();
+  const { socket, isConnected, onMessage, connectWebSocket } = useWebSocket(
+    currentExecutionId,
+    token,
+  );
 
   // 确认框状态
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -136,7 +155,7 @@ const WorkflowDetail: React.FC = () => {
   };
 
   // 加载执行记录数据
-  const loadExecutionData = async () => {
+  const loadExecutionData = useCallback(async () => {
     if (!workflowId) return;
 
     try {
@@ -165,11 +184,12 @@ const WorkflowDetail: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to load execution data:", err);
+      alert("加载执行记录失败");
     }
-  };
+  }, [workflowId, currentPage, pageSize]);
 
   // 加载文件系统数据
-  const loadFileSystemData = async () => {
+  const loadFileSystemData = useCallback(async () => {
     if (!workflowId) return;
 
     try {
@@ -195,7 +215,66 @@ const WorkflowDetail: React.FC = () => {
     } finally {
       setFilesLoading(false);
     }
-  };
+  }, [workflowId]);
+
+  // 处理WebSocket消息
+  useEffect(() => {
+    const unsubscribe = onMessage((message) => {
+      console.log("WebSocket消息:", message);
+
+      if (message.type === "node_status" && message.node_id !== undefined) {
+        const { node_id, status } = message;
+        setNodeStatuses((prev) => ({
+          ...prev,
+          [node_id.toString()]: status as
+            | "idle"
+            | "running"
+            | "success"
+            | "error",
+        }));
+      } else if (message.type === "execution_status") {
+        const { status, error, execution_id } = message;
+        console.log("执行状态更新:", status, execution_id);
+
+        // 更新执行状态
+        setExecution((prev: any) => ({
+          ...prev,
+          status: status as
+            | "pending"
+            | "running"
+            | "success"
+            | "error"
+            | "cancelled",
+          error_message: error || prev.error_message,
+        }));
+
+        // 如果执行完成，更新状态
+        if (
+          status === "success" ||
+          status === "error" ||
+          status === "cancelled"
+        ) {
+          console.log("执行完成:", status);
+          // 执行完成，清除节点状态
+          setNodeStatuses({});
+          setIsExecuting(false);
+          // 刷新执行历史记录
+          loadExecutionData();
+          // 刷新文件系统数据（工作流可能创建了新文件）
+          loadFileSystemData();
+          // 清除当前执行ID
+          setCurrentExecutionId(null);
+          // 断开WebSocket连接
+          if (socket) {
+            console.log("断开WebSocket连接");
+            socket.disconnect();
+          }
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [onMessage, loadExecutionData, loadFileSystemData, socket]);
 
   // 当工作流ID变化时，加载工作流基本数据和文件系统数据
   useEffect(() => {
@@ -316,70 +395,58 @@ const WorkflowDetail: React.FC = () => {
     if (!workflowId || isExecuting) return;
 
     setIsExecuting(true);
+    // 清除之前的节点状态
+    setNodeStatuses({});
 
     try {
+      console.log("开始执行工作流...");
       // 调用执行 API
       const executeResponse = await workflowApi.executeWorkflow(
         parseInt(workflowId),
         {},
       );
 
+      console.log("执行 API 响应:", executeResponse);
+      // 获取执行 ID
+      const executionId = executeResponse.execution_id;
+
+      console.log("获取到执行 ID:", executionId);
+      // 立即建立 WebSocket 连接
+      if (token) {
+        console.log("token:", token);
+        console.log("建立 WebSocket 连接...");
+        connectWebSocket(executionId, token);
+      } else {
+        console.log("token 为 null 或 undefined，无法建立 WebSocket 连接");
+      }
+
+      // 设置当前执行ID，用于WebSocket连接
+      setCurrentExecutionId(executionId);
+      console.log("设置当前执行 ID:", executionId);
+
       // 设置执行状态
       setExecution({
-        id: executeResponse.execution_id,
+        id: executionId,
         status: executeResponse.status,
         start_time: executeResponse.start_time,
       });
+      console.log("设置执行状态:", executeResponse.status);
 
       // 切换到执行标签页
       setActiveTab("execution");
 
       // 立即获取一次执行日志
-      const executionLogs = await executionApi.getExecutionLogs(
-        executeResponse.execution_id,
-      );
+      const executionLogs = await executionApi.getExecutionLogs(executionId);
       setLogs(executionLogs);
-
-      // 轮询获取执行状态和日志
-      const pollInterval = setInterval(async () => {
-        try {
-          // 获取执行详情
-          const executionDetail = await executionApi.getExecution(
-            executeResponse.execution_id,
-          );
-          setExecution(executionDetail);
-
-          // 获取执行日志
-          const executionLogs = await executionApi.getExecutionLogs(
-            executeResponse.execution_id,
-          );
-          setLogs(executionLogs);
-
-          // 如果执行完成，停止轮询并更新执行状态
-          if (
-            executionDetail.status === "success" ||
-            executionDetail.status === "error" ||
-            executionDetail.status === "cancelled"
-          ) {
-            clearInterval(pollInterval);
-            setIsExecuting(false);
-            // 刷新执行历史记录
-            loadExecutionData();
-            // 刷新文件系统数据（工作流可能创建了新文件）
-            loadFileSystemData();
-          }
-        } catch (err) {
-          console.error("Failed to get execution status:", err);
-          clearInterval(pollInterval);
-          setIsExecuting(false);
-        }
-      }, 1000); // 每秒轮询一次
+      console.log("获取执行日志:", executionLogs.length, "条");
     } catch (err) {
       console.error("Failed to execute workflow:", err);
       alert("执行工作流失败");
       setIsExecuting(false);
       // 刷新执行历史记录
       loadExecutionData();
+      // 清除当前执行ID
+      setCurrentExecutionId(null);
     }
   };
 
@@ -834,6 +901,7 @@ const WorkflowDetail: React.FC = () => {
                 flowId={parseInt(workflowId || "0")}
                 nodes={nodes}
                 edges={edges}
+                nodeStatuses={nodeStatuses}
                 onNodesChange={handleNodesChange}
                 onEdgesChange={handleEdgesChange}
                 onNodeSelect={handleNodeSelect}
