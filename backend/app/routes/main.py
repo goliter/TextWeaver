@@ -6,6 +6,7 @@ from app.modules.filesystem.routes import router as filesystem_router
 from app.modules.workflow.routes import router as workflow_router
 from app.modules.workflow.execution_routes import router as execution_router
 from app.modules.template.routes import router as template_router
+from app.modules.ai.routes import router as ai_service_router
 
 # 创建主路由器
 api_router = APIRouter(prefix="/api")
@@ -16,6 +17,7 @@ api_router.include_router(filesystem_router)
 api_router.include_router(workflow_router)
 api_router.include_router(execution_router)
 api_router.include_router(template_router)
+api_router.include_router(ai_service_router)
 
 # 未来可以在此添加更多模块路由
 # api_router.include_router(another_module_router)

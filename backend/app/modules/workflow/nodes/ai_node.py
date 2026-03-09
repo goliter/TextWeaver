@@ -23,7 +23,7 @@ class AINodeExecutor(NodeExecutor):
         logger.info(f"Executing AI node: {node.name}")
         
         # 获取AI节点配置
-        model = node.data.get("model", "gemini-2.5-flash")  # 统一使用 gemini-2.5-flash 作为默认模型
+        
         prompt = node.data.get("prompt", "请处理以下内容: {input}")
         system_prompt = node.data.get("system_prompt", "")
         

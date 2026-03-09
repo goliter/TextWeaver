@@ -11,16 +11,19 @@ logger = logging.getLogger(__name__)
 class LangChainService:
     """LangChain 服务类"""
     
-    def __init__(self):
+    def __init__(self, api_key=None, api_base=None, model=None):
         """初始化 LangChain 服务"""
+        self.api_key = api_key or ai_settings.openai_api_key
+        self.api_base = api_base or ai_settings.openai_api_base
+        self.model = model or ai_settings.openai_model
         self.llm = self._create_llm()
     
     def _create_llm(self):
         """创建 LLM 实例"""
         return ChatOpenAI(
-            api_key=ai_settings.openai_api_key,
-            base_url=ai_settings.openai_api_base,
-            model=ai_settings.openai_model,
+            api_key=self.api_key,
+            base_url=self.api_base,
+            model=self.model,
             temperature=ai_settings.langchain_temperature,
             max_tokens=ai_settings.langchain_max_tokens,
             verbose=ai_settings.langchain_verbose,

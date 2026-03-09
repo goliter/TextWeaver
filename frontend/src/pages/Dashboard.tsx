@@ -7,33 +7,7 @@ const Dashboard: React.FC = () => {
       <h1 className="text-3xl font-bold text-gray-900">仪表板</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* 文件系统卡片 */}
-        <Link
-          to="/dashboard/filesystem"
-          className="block p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 hover:border-indigo-300"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-indigo-100 rounded-lg">
-              <svg
-                className="w-8 h-8 text-indigo-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2-2z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">文件系统</h2>
-              <p className="text-gray-500 mt-1">管理您的虚拟文件</p>
-            </div>
-          </div>
-        </Link>
+        
 
         {/* 工作流卡片 */}
         <Link

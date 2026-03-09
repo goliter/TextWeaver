@@ -33,10 +33,10 @@ const Layout: React.FC = () => {
       icon: "📋",
     },
     {
-      id: "template-library",
-      label: "模板库",
-      path: "/dashboard/template-library",
-      icon: "📚",
+      id: "ai-services",
+      label: "AI服务配置",
+      path: "/dashboard/ai-services",
+      icon: "🤖",
     },
   ];
 

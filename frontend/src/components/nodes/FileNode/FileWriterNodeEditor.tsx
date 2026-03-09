@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import FileSelector from "./FileSelector";
 import WriteModeSelector from "./WriteModeSelector";
 import AIPromptEditor from "./AIPromptEditor";
-import DataSourceManager from "../AINode/DataSourceManager"
+import DataSourceManager from "../AINode/DataSourceManager";
+import { aiServicesApi, type AIService } from "../../../api/ai-services";
 
 interface FileWriterNodeEditorProps {
   isOpen: boolean;
@@ -22,12 +23,39 @@ const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
   flowId,
 }) => {
   const [formData, setFormData] = useState<any>({});
+  const [aiServices, setAiServices] = useState<AIService[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (node?.data) {
       setFormData(node.data);
     }
   }, [node]);
+
+  useEffect(() => {
+    const fetchAIServices = async () => {
+      if (isOpen) {
+        try {
+          setLoading(true);
+          const data = await aiServicesApi.getAll();
+          // 确保数据是数组
+          if (Array.isArray(data)) {
+            setAiServices(data);
+          } else {
+            console.error("API返回的数据不是数组:", data);
+            setAiServices([]);
+          }
+        } catch (error) {
+          console.error("获取AI服务配置失败:", error);
+          setAiServices([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchAIServices();
+  }, [isOpen]);
 
   if (!isOpen || !node) return null;
 
@@ -144,6 +172,35 @@ const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
           </div>
           {formData.mode === "ai" && (
             <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  AI服务配置
+                </label>
+                {loading ? (
+                  <div className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50">
+                    加载中...
+                  </div>
+                ) : (
+                  <select
+                    value={formData.ai_service_id || ""}
+                    onChange={(e) =>
+                      handleChange(
+                        "ai_service_id",
+                        parseInt(e.target.value) || null,
+                      )
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">使用默认服务</option>
+                    {aiServices.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name} ({service.model})
+                        {service.is_default && " (默认)"}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <DataSourceManager
                 topInputs={topInputs}
                 leftInputs={leftInputs}

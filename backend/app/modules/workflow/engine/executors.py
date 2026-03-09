@@ -259,8 +259,27 @@ class FileWriterNodeExecutor(BaseNodeExecutor):
                 for var_name, var_value in variables.items():
                     prompt = prompt.replace(f"{{{var_name}}}", str(var_value))
                 
+                # 检查是否指定了AI服务配置
+                ai_service_id = node.data.get("ai_service_id")
+                if ai_service_id:
+                    # 加载用户配置的AI服务
+                    from app.modules.ai.crud import get_ai_service
+                    ai_service_config = get_ai_service(self.db, ai_service_id, node.flow.user_id)
+                    if ai_service_config:
+                        # 创建使用用户配置的AI服务
+                        ai_service = LangChainService(
+                            api_key=ai_service_config.api_key,
+                            api_base=ai_service_config.api_base,
+                            model=ai_service_config.model
+                        )
+                    else:
+                        # 使用默认服务
+                        ai_service = LangChainService()
+                else:
+                    # 使用默认服务
+                    ai_service = LangChainService()
+                
                 # 调用AI服务
-                ai_service = LangChainService()
                 content = ai_service.generate_text(prompt)
             
             # 写入文件
@@ -277,7 +296,7 @@ class AINodeExecutor(BaseNodeExecutor):
     
     def __init__(self, db: Session):
         super().__init__(db)
-        self.ai_service = LangChainService()
+        self.ai_service = LangChainService()  # 默认服务，在execute中可能会被替换
     
     def _get_input_edges(self, node_id: int) -> list:
         """获取节点的输入边"""
@@ -349,6 +368,20 @@ class AINodeExecutor(BaseNodeExecutor):
             prompt = prompt.replace(f"{{{var_name}}}", str(var_value))
         
         try:
+            # 检查是否指定了AI服务配置
+            ai_service_id = node.data.get("ai_service_id")
+            if ai_service_id:
+                # 加载用户配置的AI服务
+                from app.modules.ai.crud import get_ai_service
+                ai_service_config = get_ai_service(self.db, ai_service_id, node.flow.user_id)
+                if ai_service_config:
+                    # 创建使用用户配置的AI服务
+                    self.ai_service = LangChainService(
+                        api_key=ai_service_config.api_key,
+                        api_base=ai_service_config.api_base,
+                        model=ai_service_config.model
+                    )
+            
             # 调用AI服务
             content = self.ai_service.generate_text(prompt)
             
