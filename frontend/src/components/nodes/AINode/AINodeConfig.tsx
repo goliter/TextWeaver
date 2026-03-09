@@ -57,7 +57,10 @@ const AINodeConfig: React.FC<AINodeConfigProps> = ({ node, edges = [] }) => {
 
   return (
     <div className="space-y-4">
-      {renderReadOnlyField("模型", node.data?.model || "gemini-2.0-flash")}
+      {renderReadOnlyField(
+        "模型",
+        node.data?.ai_service_id ? "自定义服务" : "gemini-2.0-flash",
+      )}
 
       <div>
         <label className="block text-xs font-medium text-gray-500 mb-2">

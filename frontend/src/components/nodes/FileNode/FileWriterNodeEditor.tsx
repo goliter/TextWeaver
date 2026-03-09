@@ -191,7 +191,9 @@ const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
                     }
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="">使用默认服务</option>
+                    <option value="">
+                      使用系统默认服务 (gemini-2.0-flash)
+                    </option>
                     {aiServices.map((service) => (
                       <option key={service.id} value={service.id}>
                         {service.name} ({service.model})
