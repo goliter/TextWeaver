@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { filesystemApi } from "../../../api/filesystem";
 
 interface FileSelectorProps {
   value: string;
@@ -6,6 +7,7 @@ interface FileSelectorProps {
   onFileSelect: (fileId: number, filePath: string) => void;
   disabled?: boolean;
   folderOnly?: boolean;
+  flowId: number;
 }
 
 const FileSelector: React.FC<FileSelectorProps> = ({
@@ -14,21 +16,32 @@ const FileSelector: React.FC<FileSelectorProps> = ({
   onFileSelect,
   disabled = false,
   folderOnly = false,
+  flowId,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [files, setFiles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const mockFiles = [
-    { id: 1, name: "example.txt", path: "/data/example.txt", type: "file" },
-    { id: 2, name: "data.json", path: "/data/data.json", type: "file" },
-    { id: 3, name: "report.md", path: "/data/report.md", type: "file" },
-    { id: 4, name: "config.yaml", path: "/data/config.yaml", type: "file" },
-    { id: 5, name: "data", path: "/data", type: "folder" },
-    { id: 6, name: "output", path: "/output", type: "folder" },
-    { id: 7, name: "logs", path: "/logs", type: "folder" },
-  ];
+  useEffect(() => {
+    if (isOpen && flowId) {
+      loadFiles();
+    }
+  }, [isOpen, flowId]);
 
-  const filteredFiles = mockFiles.filter((file) => {
+  const loadFiles = async () => {
+    try {
+      setLoading(true);
+      const allFiles = await filesystemApi.getAllFiles(flowId);
+      setFiles(allFiles);
+    } catch (error) {
+      console.error("Failed to load files:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredFiles = files.filter((file) => {
     if (folderOnly && file.type !== "folder") {
       return false;
     }
@@ -50,7 +63,11 @@ const FileSelector: React.FC<FileSelectorProps> = ({
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-500"
-          placeholder={folderOnly ? "请输入文件夹路径，例如：/data" : "请输入文件路径，例如：/data/example.txt"}
+          placeholder={
+            folderOnly
+              ? "请输入文件夹路径，例如：/data"
+              : "请输入文件路径，例如：/data/example.txt"
+          }
         />
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -72,29 +89,39 @@ const FileSelector: React.FC<FileSelectorProps> = ({
               placeholder={folderOnly ? "搜索文件夹..." : "搜索文件..."}
             />
           </div>
-          <div className="divide-y divide-gray-100">
-            {filteredFiles.map((file) => (
-              <div
-                key={file.id}
-                onClick={() => handleFileClick(file)}
-                className="p-3 hover:bg-gray-50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">
-                    {file.type === "folder" ? "📁" : "📄"}
-                  </span>
-                  <div>
-                    <div className="font-medium text-gray-900">{file.name}</div>
-                    <div className="text-xs text-gray-500">{file.path}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {filteredFiles.length === 0 && (
+          {loading ? (
             <div className="p-4 text-center text-sm text-gray-500">
-              {folderOnly ? "未找到文件夹" : "未找到文件"}
+              加载中...
             </div>
+          ) : (
+            <>
+              <div className="divide-y divide-gray-100">
+                {filteredFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    onClick={() => handleFileClick(file)}
+                    className="p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {file.type === "folder" ? "📁" : "📄"}
+                      </span>
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {file.name}
+                        </div>
+                        <div className="text-xs text-gray-500">{file.path}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {filteredFiles.length === 0 && (
+                <div className="p-4 text-center text-sm text-gray-500">
+                  {folderOnly ? "未找到文件夹" : "未找到文件"}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

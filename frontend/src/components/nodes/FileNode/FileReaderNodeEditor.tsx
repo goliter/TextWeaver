@@ -6,6 +6,7 @@ interface FileReaderNodeEditorProps {
   node: any;
   onSave: (data: any) => void;
   onCancel: () => void;
+  flowId: number;
 }
 
 const FileReaderNodeEditor: React.FC<FileReaderNodeEditorProps> = ({
@@ -13,6 +14,7 @@ const FileReaderNodeEditor: React.FC<FileReaderNodeEditorProps> = ({
   node,
   onSave,
   onCancel,
+  flowId,
 }) => {
   const [formData, setFormData] = useState<any>({});
 
@@ -67,6 +69,7 @@ const FileReaderNodeEditor: React.FC<FileReaderNodeEditorProps> = ({
                 handleChange("fileId", fileId);
                 handleChange("filePath", filePath);
               }}
+              flowId={flowId}
             />
             <p className="mt-1 text-xs text-gray-500">
               文件路径是相对于工作流根目录的路径

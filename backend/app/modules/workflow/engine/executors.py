@@ -175,6 +175,12 @@ class FileWriterNodeExecutor(BaseNodeExecutor):
         
         raise ValueError("文件写入节点缺少fileId或filePath配置")
     
+    def _get_input_edges(self, node_id: int) -> list:
+        """获取节点的输入边"""
+        return self.db.query(Edge).filter(
+            Edge.target_node_id == node_id
+        ).all()
+    
     def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
         """
         执行文件写入节点
@@ -220,9 +226,38 @@ class FileWriterNodeExecutor(BaseNodeExecutor):
                 # 获取原文件内容
                 original_content = file_service.read_file(file_id, encoding)
                 
+                # 构建变量字典
+                variables = {"file_content": original_content}
+                
+                # 处理左侧输入（支持多个输入）
+                left_input = inputs.get("left")
+                if left_input is not None:
+                    # 获取输入边信息，用于构建变量名
+                    input_edges = self._get_input_edges(node.id)
+                    
+                    if isinstance(left_input, list):
+                        # 处理多个输入的情况
+                        left_edges = [edge for edge in input_edges if edge.target_handle == "left"]
+                        for i, (data, edge) in enumerate(zip(left_input, left_edges)):
+                            source_node_id = edge.source_node_id
+                            var_name = f"input_{source_node_id}"
+                            variables[var_name] = data
+                        # 保留兼容的 input_data 变量
+                        variables["input_data"] = left_input
+                    else:
+                        # 单个输入的情况
+                        variables["input_data"] = left_input
+                        # 构建基于源节点ID的变量名
+                        left_edges = [edge for edge in input_edges if edge.target_handle == "left"]
+                        if left_edges:
+                            source_node_id = left_edges[0].source_node_id
+                            var_name = f"input_{source_node_id}"
+                            variables[var_name] = left_input
+                
                 # 替换提示词中的变量
-                prompt = ai_prompt.replace("{file_content}", original_content)
-                prompt = prompt.replace("{input_data}", str(input_data))
+                prompt = ai_prompt
+                for var_name, var_value in variables.items():
+                    prompt = prompt.replace(f"{{{var_name}}}", str(var_value))
                 
                 # 调用AI服务
                 ai_service = LangChainService()

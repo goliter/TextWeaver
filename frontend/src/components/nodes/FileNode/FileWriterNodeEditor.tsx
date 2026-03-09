@@ -2,19 +2,24 @@ import React, { useState, useEffect } from "react";
 import FileSelector from "./FileSelector";
 import WriteModeSelector from "./WriteModeSelector";
 import AIPromptEditor from "./AIPromptEditor";
+import DataSourceManager from "../AINode/DataSourceManager"
 
 interface FileWriterNodeEditorProps {
   isOpen: boolean;
   node: any;
+  edges?: any[];
   onSave: (data: any) => void;
   onCancel: () => void;
+  flowId: number;
 }
 
 const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
   isOpen,
   node,
+  edges = [],
   onSave,
   onCancel,
+  flowId,
 }) => {
   const [formData, setFormData] = useState<any>({});
 
@@ -25,6 +30,37 @@ const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
   }, [node]);
 
   if (!isOpen || !node) return null;
+
+  const analyzeDataSources = () => {
+    const topInputs: any[] = [];
+    const leftInputs: any[] = [];
+
+    edges.forEach((edge: any) => {
+      if (edge.target === node.id) {
+        if (edge.targetHandle === "top") {
+          topInputs.push({
+            id: `input_${edge.source}`,
+            name: `input_${edge.source}`,
+            sourceNodeId: edge.source,
+            sourceNodeName: `节点 ${edge.source}`,
+            type: "input" as const,
+          });
+        } else if (edge.targetHandle === "left") {
+          leftInputs.push({
+            id: `input_${edge.source}`,
+            name: `input_${edge.source}`,
+            sourceNodeId: edge.source,
+            sourceNodeName: `节点 ${edge.source}`,
+            type: "input" as const,
+          });
+        }
+      }
+    });
+
+    return { topInputs, leftInputs };
+  };
+
+  const { topInputs, leftInputs } = analyzeDataSources();
 
   const handleChange = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
@@ -73,6 +109,7 @@ const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
                 handleChange("fileId", fileId);
                 handleChange("filePath", filePath);
               }}
+              flowId={flowId}
             />
             <p className="mt-1 text-xs text-gray-500">
               文件路径是相对于工作流根目录的路径
@@ -106,10 +143,16 @@ const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
             </label>
           </div>
           {formData.mode === "ai" && (
-            <AIPromptEditor
-              value={formData.aiPrompt || ""}
-              onChange={(value) => handleChange("aiPrompt", value)}
-            />
+            <>
+              <DataSourceManager
+                topInputs={topInputs}
+                leftInputs={leftInputs}
+              />
+              <AIPromptEditor
+                value={formData.aiPrompt || ""}
+                onChange={(value) => handleChange("aiPrompt", value)}
+              />
+            </>
           )}
         </div>
 

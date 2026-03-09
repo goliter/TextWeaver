@@ -63,9 +63,11 @@ class FileService:
             content: 要写入的内容
             encoding: 文件编码，默认为utf-8
             overwrite: 是否覆盖原文件，默认为True
+                      True: 替换文件内容
+                      False: 在文件末尾追加内容
         
         Raises:
-            ValueError: 如果文件不存在、不是文件类型或不允许覆盖
+            ValueError: 如果文件不存在或不是文件类型
         """
         file = self.db.query(File).filter(File.id == file_id).first()
         
@@ -75,10 +77,6 @@ class FileService:
         if file.type != "file":
             raise ValueError(f"不是文件类型: ID={file_id}, type={file.type}")
         
-        # 检查是否允许覆盖
-        if not overwrite and file.content:
-            raise ValueError(f"文件已存在且不允许覆盖: ID={file_id}")
-        
         # 如果需要，进行编码转换
         if encoding != "utf-8":
             try:
@@ -87,7 +85,17 @@ class FileService:
                 raise ValueError(f"编码转换失败: {e}")
         
         # 更新文件内容
-        file.content = content
+        if overwrite:
+            # 覆盖模式：直接替换文件内容
+            file.content = content
+        else:
+            # 追加模式：在文件末尾添加内容
+            existing_content = file.content or ""
+            file.content = existing_content + content
+        
+        # 更新文件大小
+        file.size = len(file.content)
+        
         self.db.commit()
         self.db.refresh(file)
     

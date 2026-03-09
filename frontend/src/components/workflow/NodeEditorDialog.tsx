@@ -14,6 +14,7 @@ interface NodeEditorDialogProps {
   edges?: any[];
   onSave: (data: any) => void;
   onCancel: () => void;
+  flowId: number;
 }
 
 const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
@@ -22,6 +23,7 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
   edges = [],
   onSave,
   onCancel,
+  flowId,
 }) => {
   if (!isOpen || !node) return null;
 
@@ -45,6 +47,7 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
             node={node}
             onSave={onSave}
             onCancel={onCancel}
+            flowId={flowId}
           />
         );
       case "fileWriter":
@@ -53,8 +56,10 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
           <FileWriterNodeEditor
             isOpen={isOpen}
             node={node}
+            edges={edges}
             onSave={onSave}
             onCancel={onCancel}
+            flowId={flowId}
           />
         );
       case "folderWriter":
@@ -65,6 +70,7 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
             node={node}
             onSave={onSave}
             onCancel={onCancel}
+            flowId={flowId}
           />
         );
       case "start":

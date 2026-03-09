@@ -987,6 +987,7 @@ const WorkflowDetail: React.FC = () => {
         isOpen={nodeEditor.isOpen}
         node={nodeEditor.node}
         edges={edges}
+        flowId={parseInt(workflowId || "0")}
         onSave={(data) => {
           if (nodeEditor.node) {
             handleNodeUpdate(data, nodeEditor.node.id);

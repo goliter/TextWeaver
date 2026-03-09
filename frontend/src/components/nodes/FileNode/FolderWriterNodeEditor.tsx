@@ -6,6 +6,7 @@ interface FolderWriterNodeEditorProps {
   node: any;
   onSave: (data: any) => void;
   onCancel: () => void;
+  flowId: number;
 }
 
 const FolderWriterNodeEditor: React.FC<FolderWriterNodeEditorProps> = ({
@@ -13,6 +14,7 @@ const FolderWriterNodeEditor: React.FC<FolderWriterNodeEditorProps> = ({
   node,
   onSave,
   onCancel,
+  flowId,
 }) => {
   const [formData, setFormData] = useState<any>({});
 
@@ -68,6 +70,7 @@ const FolderWriterNodeEditor: React.FC<FolderWriterNodeEditorProps> = ({
                 handleChange("folderPath", folderPath);
               }}
               folderOnly={true}
+              flowId={flowId}
             />
             <p className="mt-1 text-xs text-gray-500">
               选择一个文件夹，节点会在该文件夹中创建新文件

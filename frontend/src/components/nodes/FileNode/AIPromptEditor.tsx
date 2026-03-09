@@ -28,7 +28,7 @@ const AIPromptEditor: React.FC<AIPromptEditorProps> = ({
         <div className="font-medium mb-1">可用变量：</div>
         <div className="space-y-1">
           <div><code>{`{file_content}`}</code> - 原文件内容</div>
-          <div><code>{`{input_data}`}</code> - 输入数据</div>
+          <div><code>{`{input_<source_node_id>}`}</code> - 来自特定源节点的输入数据（例如：{`{input_123}`}）</div>
         </div>
       </div>
     </div>
