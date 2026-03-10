@@ -14,6 +14,7 @@ class NodeType(str, Enum):
     FILE_READER = "file_reader"
     FILE_WRITER = "file_writer"
     FOLDER_WRITER = "folder_writer"
+    SELECT = "select"
 
 
 class ExecutionStatus(str, Enum):

@@ -6,6 +6,7 @@ import {
   FolderWriterNodeEditor,
   StartNodeEditor,
   EndNodeEditor,
+  SelectNodeEditor,
 } from "../nodes";
 
 interface NodeEditorDialogProps {
@@ -87,6 +88,16 @@ const NodeEditorDialog: React.FC<NodeEditorDialogProps> = ({
           <EndNodeEditor
             isOpen={isOpen}
             node={node}
+            onSave={onSave}
+            onCancel={onCancel}
+          />
+        );
+      case "select":
+        return (
+          <SelectNodeEditor
+            isOpen={isOpen}
+            node={node}
+            edges={edges}
             onSave={onSave}
             onCancel={onCancel}
           />

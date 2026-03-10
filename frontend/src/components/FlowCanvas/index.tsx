@@ -14,6 +14,7 @@ import {
   FileReaderNode,
   FileWriterNode,
   FolderWriterNode,
+  SelectNode,
 } from "../nodes";
 
 interface FlowCanvasProps {
@@ -75,6 +76,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     file_reader: FileReaderNode,
     file_writer: FileWriterNode,
     folder_writer: FolderWriterNode,
+    select: SelectNode,
   };
 
   const handleNodesChange = useCallback(

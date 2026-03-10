@@ -229,6 +229,9 @@ class ExecutionEngine:
         visited = set()
         queue = [start_node.id]
         
+        # 存储选择节点的选择结果：{select_node_id: {selected_target_node_id: True}}
+        select_node_selections = {}
+        
         while queue:
             current_node_id = queue.pop(0)
             
@@ -243,6 +246,14 @@ class ExecutionEngine:
                     # 如果输入节点未执行，将其加入队列
                     if edge.source_node_id not in queue:
                         queue.append(edge.source_node_id)
+                else:
+                    # 检查输入节点是否是选择节点，如果是，检查当前节点是否被选中
+                    source_node = node_map.get(edge.source_node_id)
+                    if source_node and source_node.node_type == "select":
+                        # 如果输入节点是选择节点，检查当前节点是否被选中
+                        if edge.source_node_id in select_node_selections:
+                            if current_node_id not in select_node_selections[edge.source_node_id]:
+                                all_inputs_executed = False
             
             # 如果所有输入节点已执行，执行当前节点
             if all_inputs_executed:
@@ -252,22 +263,49 @@ class ExecutionEngine:
                 if not current_node:
                     continue
                 
-                # 执行节点
-                self._execute_node(current_node, execution_id, data_flow)
+                # 执行节点并获取输出数据
+                outputs = self._execute_node(current_node, execution_id, data_flow)
                 
                 # 找到下一个节点并加入队列
-                for edge in edges_by_source.get(current_node_id, []):
-                    target_node_id = edge.target_node_id
-                    if target_node_id not in visited and target_node_id not in queue:
-                        queue.append(target_node_id)
-    
-    def _execute_node(self, node: models.Node, execution_id: int, data_flow: DataFlowManager):
+                # 对于选择节点，只将实际接收到数据的输出边对应的目标节点加入队列
+                if current_node.node_type == "select":
+                    # 选择节点：只处理有输出的边，且只选择第一个匹配的节点
+                    added_targets = set()
+                    # 存储选择节点的选择结果
+                    select_node_selections[current_node_id] = {}
+                    
+                    for edge in edges_by_source.get(current_node_id, []):
+                        target_node_id = str(edge.target_node_id)
+                        source_handle = edge.source_handle or "bottom"
+                        if target_node_id in outputs and outputs[target_node_id] is not None:
+                            if edge.target_node_id not in visited and edge.target_node_id not in queue and edge.target_node_id not in added_targets:
+                                queue.append(edge.target_node_id)
+                                added_targets.add(edge.target_node_id)
+                                # 记录选择结果
+                                select_node_selections[current_node_id][edge.target_node_id] = True
+                                # 设置数据流管理器的输出数据
+                                output_data = outputs[target_node_id]
+                                if isinstance(output_data, dict) and "handle" in output_data and "data" in output_data:
+                                    data_flow.set_node_output(current_node_id, output_data["handle"], output_data["data"])
+                                # 只添加第一个匹配的节点，然后break
+                                break
+                else:
+                    # 其他节点：处理所有输出边
+                    for edge in edges_by_source.get(current_node_id, []):
+                        target_node_id = edge.target_node_id
+                        if target_node_id not in visited and target_node_id not in queue:
+                            queue.append(target_node_id)
+
+    def _execute_node(self, node: models.Node, execution_id: int, data_flow: DataFlowManager) -> Dict[str, Any]:
         """执行单个节点
         
         Args:
             node: 节点对象
             execution_id: 执行记录ID
             data_flow: 数据流管理器
+        
+        Returns:
+            节点输出数据字典
         """
         # 创建执行日志
         log = crud.create_execution_log(self.db, execution_id=execution_id, node_id=node.id)
@@ -298,6 +336,7 @@ class ExecutionEngine:
             # 更新日志状态为成功
             crud.update_execution_log(self.db, log_id=log.id, status="success", output_data=outputs)
             
+            return outputs
         except Exception as e:
             # 推送节点执行错误状态
             loop = get_or_create_event_loop()

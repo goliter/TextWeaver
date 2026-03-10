@@ -520,6 +520,8 @@ const WorkflowDetail: React.FC = () => {
       } else if (nodeType === "folderWriter") {
         nodeData.data.folderPath = fileData?.path || "";
         nodeData.data.folderId = fileData?.id || "";
+      } else if (nodeType === "select") {
+        nodeData.data.prompt = "请根据输入数据选择一个输出节点: {{input}}";
       }
 
       const newNode = await workflowApi.createNode(
@@ -561,6 +563,8 @@ const WorkflowDetail: React.FC = () => {
         return "文件写入节点";
       case "folderWriter":
         return "文件夹写入节点";
+      case "select":
+        return "选择节点";
       default:
         return "节点";
     }
@@ -608,6 +612,19 @@ const WorkflowDetail: React.FC = () => {
   ) => {
     if (!workflowId) return;
 
+    // 检查目标节点是否是选择节点，且是否已经有输入连接
+    const targetNode = nodes.find((node) => node.id === target);
+    if (targetNode?.type === "select" && targetHandle === "top") {
+      // 检查是否已经有输入连接
+      const existingInputEdges = edges.filter(
+        (edge) => edge.target === target && edge.targetHandle === "top",
+      );
+      if (existingInputEdges.length > 0) {
+        alert("选择节点只允许一个输入连接");
+        throw new Error("选择节点只允许一个输入连接");
+      }
+    }
+
     try {
       const edgeData = {
         source_node_id: parseInt(source),
@@ -633,7 +650,12 @@ const WorkflowDetail: React.FC = () => {
       ]);
     } catch (err) {
       console.error("Failed to create edge:", err);
-      alert("创建连接失败");
+      if (
+        err instanceof Error &&
+        err.message !== "选择节点只允许一个输入连接"
+      ) {
+        alert("创建连接失败");
+      }
       throw err;
     }
   };

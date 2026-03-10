@@ -6,6 +6,7 @@ import {
   FolderWriterNodeConfig,
   StartNodeConfig,
   EndNodeConfig,
+  SelectNodeConfig,
 } from "../nodes";
 
 interface NodeConfigProps {
@@ -39,6 +40,8 @@ const NodeConfig: React.FC<NodeConfigProps> = ({ node, edges = [] }) => {
       case "folderWriter":
       case "folder_writer":
         return "文件夹写入节点";
+      case "select":
+        return "选择节点";
       case "input":
         return "输入节点";
       case "output":
@@ -108,6 +111,12 @@ const NodeConfig: React.FC<NodeConfigProps> = ({ node, edges = [] }) => {
       {(node.type === "folderWriter" || node.type === "folder_writer") && (
         <div className="space-y-4 pt-3 border-t border-gray-200">
           <FolderWriterNodeConfig node={node} />
+        </div>
+      )}
+
+      {node.type === "select" && (
+        <div className="space-y-4 pt-3 border-t border-gray-200">
+          <SelectNodeConfig node={node} edges={edges} />
         </div>
       )}
     </div>

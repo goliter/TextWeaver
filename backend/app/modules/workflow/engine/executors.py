@@ -435,6 +435,132 @@ class EndNodeExecutor(BaseNodeExecutor):
         return {}
 
 
+class SelectNodeExecutor(BaseNodeExecutor):
+    """选择节点执行器"""
+    
+    def __init__(self, db: Session):
+        super().__init__(db)
+        self.ai_service = LangChainService()  # 默认服务
+    
+    def _get_input_edges(self, node_id: int) -> list:
+        """获取节点的输入边"""
+        return self.db.query(Edge).filter(
+            Edge.target_node_id == node_id
+        ).all()
+    
+    def _get_output_edges(self, node_id: int) -> list:
+        """获取节点的输出边"""
+        return self.db.query(Edge).filter(
+            Edge.source_node_id == node_id
+        ).all()
+    
+    def execute(self, node: Node, data_flow: DataFlowManager) -> Dict[str, Any]:
+        """
+        执行选择节点
+        
+        1. 收集所有上侧输入的数据
+        2. 将数据插入到提示词中
+        3. 调用AI分析并选择一个输出节点
+        4. 将输入数据传递给选择的输出节点
+        """
+        # 收集输入数据
+        inputs = data_flow.get_node_inputs(node.id)
+        
+        # 获取输入边信息，用于构建变量名
+        input_edges = self._get_input_edges(node.id)
+        edge_map = {edge.target_handle: edge for edge in input_edges}
+        
+        # 构建变量字典
+        variables = {}
+        
+        # 处理上侧输入（数据输入）
+        top_input = inputs.get("top")
+        if top_input is not None:
+            # 只处理单个输入的情况
+            if isinstance(top_input, list):
+                # 如果是多个输入，只使用第一个
+                top_input = top_input[0]
+            
+            # 单个输入的情况
+            if "top" in edge_map:
+                source_node_id = edge_map["top"].source_node_id
+                var_name = f"input_{source_node_id}"
+                variables[var_name] = top_input
+            else:
+                variables["input"] = top_input
+        
+        # 获取提示词
+        prompt = node.data.get("prompt", "")
+        
+        # 获取所有输出边，用于构建输出节点变量映射
+        output_edges = self._get_output_edges(node.id)
+        
+        # 构建输出节点变量映射：将变量名映射到节点ID
+        output_node_map = {}
+        for edge in output_edges:
+            # 假设输出节点变量名格式为 {output_节点ID} 或 {节点ID}
+            target_node_id = str(edge.target_node_id)
+            output_node_map[f"output_{target_node_id}"] = target_node_id
+            output_node_map[target_node_id] = target_node_id
+        
+        # 替换提示词中的输入变量
+        for var_name, var_value in variables.items():
+            prompt = prompt.replace(f"{{{var_name}}}", str(var_value))
+        
+        # 替换提示词中的输出节点变量为节点ID
+        for var_name, node_id in output_node_map.items():
+            prompt = prompt.replace(f"{{{var_name}}}", node_id)
+        
+        try:
+            # 调用AI服务选择输出节点
+            selection = self.ai_service.generate_text(prompt)
+            
+            # 构建输出边映射
+            output_edge_map = {}
+            target_node_map = {}
+            for edge in output_edges:
+                # 使用source_handle作为key，因为这是选择节点输出的连接点
+                source_handle = edge.source_handle or "bottom"
+                target_node_id = edge.target_node_id
+                output_edge_map[str(target_node_id)] = source_handle
+                target_node_map[str(target_node_id)] = edge
+            
+            # 解析AI的选择结果
+            selected_edge = None
+            # 提取选择结果中的节点ID
+            import re
+            selection_clean = selection.strip()
+            # 从output_12格式中提取节点ID
+            match = re.search(r'output_(\d+)', selection_clean)
+            if match:
+                selection_clean = match.group(1)
+            for node_id, handle in output_edge_map.items():
+                if node_id in selection_clean or handle in selection_clean:
+                    selected_edge = target_node_map.get(node_id)
+                    break
+            
+            # 如果没有找到匹配的节点，使用第一个输出边
+            if not selected_edge and output_edges:
+                selected_edge = output_edges[0]
+            
+            # 构建输出数据
+            outputs = {}
+            if selected_edge:
+                # 使用target_node_id作为key，这样执行引擎可以根据节点ID来判断
+                target_node_id = str(selected_edge.target_node_id)
+                selected_handle = selected_edge.source_handle or "bottom"
+                # 将输入数据传递给选择的输出节点
+                # 使用target_node_id作为key，执行引擎会根据这个key来判断哪个节点应该被执行
+                outputs[target_node_id] = {
+                    "handle": selected_handle,
+                    "data": top_input
+                }
+            
+            return outputs
+        except Exception as e:
+            raise ValueError(f"选择节点执行失败: {str(e)}")
+
+
 class FolderWriterNodeExecutor(BaseNodeExecutor):
     """文件夹写入节点执行器"""
     
@@ -582,6 +708,7 @@ def get_node_executor(db: Session, node_type: str) -> BaseNodeExecutor:
         "folder_writer": FolderWriterNodeExecutor,
         "folderWriter": FolderWriterNodeExecutor,
         "ai": AINodeExecutor,
+        "select": SelectNodeExecutor,
         "start": StartNodeExecutor,
         "end": EndNodeExecutor,
     }

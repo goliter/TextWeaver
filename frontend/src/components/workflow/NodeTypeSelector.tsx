@@ -141,6 +141,27 @@ const nodeTypes: NodeTypeOption[] = [
       </svg>
     ),
   },
+  {
+    type: "select",
+    label: "选择节点",
+    description: "根据提示词让AI选择一个输出节点",
+    color: "bg-teal-100 border-teal-300",
+    icon: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M13 10V3L4 14h7v7l9-11h-7z"
+        />
+      </svg>
+    ),
+  },
 ];
 
 export const NodeTypeSelector: React.FC<NodeTypeSelectorProps> = ({

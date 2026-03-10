@@ -24,3 +24,7 @@ export { default as StartNodeEditor } from "./StartNode/StartNodeEditor";
 export { default as EndNode } from "./EndNode/EndNode";
 export { default as EndNodeConfig } from "./EndNode/EndNodeConfig";
 export { default as EndNodeEditor } from "./EndNode/EndNodeEditor";
+
+export { default as SelectNode } from "./SelectNode/SelectNode";
+export { default as SelectNodeConfig } from "./SelectNode/SelectNodeConfig";
+export { default as SelectNodeEditor } from "./SelectNode/SelectNodeEditor";

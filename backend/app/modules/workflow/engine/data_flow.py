@@ -89,6 +89,31 @@ class DataFlowManager:
         
         return inputs
     
+    def get_node_inputs_by_source_node(self, node_id: int, source_node_id: int) -> Optional[Any]:
+        """
+        根据源节点ID获取输入数据（用于选择节点）
+        
+        Args:
+            node_id: 目标节点ID
+            source_node_id: 源节点ID
+        
+        Returns:
+            输入数据，如果不存在则返回None
+        """
+        # 查询从指定源节点连接到目标节点的边
+        edge = self.db.query(Edge).filter(
+            Edge.source_node_id == source_node_id,
+            Edge.target_node_id == node_id,
+            Edge.flow_id == self.flow_id
+        ).first()
+        
+        if edge:
+            # 获取源节点的输出数据
+            source_handle = edge.source_handle or "bottom"  # 默认从底部输出
+            return self.get_node_output(source_node_id, source_handle)
+        
+        return None
+    
     def get_file_content(self, file_id: int, encoding: str = "utf-8") -> str:
         """
         获取文件内容（带缓存）
