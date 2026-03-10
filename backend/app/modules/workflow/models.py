@@ -47,8 +47,8 @@ class Edge(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     flow_id = Column(Integer, ForeignKey("flows.id"), nullable=False)
-    source_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
-    target_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
+    source_node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
+    target_node_id = Column(Integer, ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False)
     source_handle = Column(String(50), nullable=True)
     target_handle = Column(String(50), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

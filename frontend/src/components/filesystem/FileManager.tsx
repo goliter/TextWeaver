@@ -80,7 +80,7 @@ function FileTreeItem({
   };
 
   const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", file.id.toString());
     e.dataTransfer.setData(
       "application/json",
@@ -174,30 +174,32 @@ function FileTreeItem({
 
         <span className="flex-1 truncate text-sm">{file.name}</span>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(file.id);
-          }}
-          className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity ${
-            isSelected ? "hover:bg-indigo-500" : "hover:bg-gray-200"
-          }`}
-          title="删除"
-        >
-          <svg
-            className="w-3 h-3"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {level > 0 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(file.id);
+            }}
+            className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity ${
+              isSelected ? "hover:bg-indigo-500" : "hover:bg-gray-200"
+            }`}
+            title="删除"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       {isFolder && isExpanded && (
@@ -641,15 +643,16 @@ export function FileManager({
         return files.filter((file) => file.id !== moveSourceFile.id);
       };
 
-      // 更新所有文件夹内容缓存
-      Object.keys(folderContents).forEach((folderId) => {
+      // 从原父文件夹的缓存中移除文件
+      const sourceParentId = moveSourceFile.parent_id;
+      if (sourceParentId !== null) {
         setFolderContents((prev) => ({
           ...prev,
-          [parseInt(folderId)]: removeFileFromCache(prev[parseInt(folderId)]),
+          [sourceParentId]: removeFileFromCache(prev[sourceParentId] || []),
         }));
-      });
+      }
 
-      // 添加到新文件夹
+      // 添加到新父文件夹的缓存中
       setFolderContents((prev) => {
         const updatedContents = prev[moveTargetFolderId] || [];
         return {
@@ -657,6 +660,10 @@ export function FileManager({
           [moveTargetFolderId]: [...updatedContents, updatedFile],
         };
       });
+
+      // 重置文件夹内容缓存，强制重新加载
+      // 这样可以确保根文件的移动也能正确反映在 UI 上
+      setFolderContents({});
 
       setShowMoveConfirmModal(false);
       setMoveSourceFile(null);
@@ -853,28 +860,31 @@ export function FileManager({
             </>
           )}
           <div className="border-t border-gray-200 my-1" />
-          <button
-            onClick={() => {
-              handleDelete(contextMenu.file.id);
-              setContextMenu(null);
-            }}
-            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center space-x-2"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {/* 只对非根文件夹显示删除选项 */}
+          {contextMenu.file.parent_id !== null && (
+            <button
+              onClick={() => {
+                handleDelete(contextMenu.file.id);
+                setContextMenu(null);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center space-x-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-            <span>删除</span>
-          </button>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              <span>删除</span>
+            </button>
+          )}
         </div>
       )}
 

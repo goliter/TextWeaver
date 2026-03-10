@@ -21,7 +21,7 @@ class WorkflowTemplate(Base):
     
     # 关联信息
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    source_flow_id = Column(Integer, ForeignKey("flows.id"), nullable=True)  # 来源工作流ID
+    source_flow_id = Column(Integer, ForeignKey("flows.id", ondelete="SET NULL"), nullable=True)  # 来源工作流ID
     
     # 统计信息
     use_count = Column(Integer, default=0)  # 使用次数

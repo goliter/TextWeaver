@@ -45,8 +45,7 @@ const FlowConfig: React.FC<FlowConfigProps> = ({
             {workflow?.description || "-"}
           </div>
         </div>
-        {renderReadOnlyField("执行超时（秒）", workflow?.timeout || 300)}
-        {renderReadOnlyField("状态", workflow?.enabled ? "启用" : "禁用")}
+
         {renderReadOnlyField(
           "创建时间",
           workflow?.created_at
