@@ -1,317 +1,268 @@
-# AI 文本工作流 MVP 架构蓝图
+# TextWeaver v1.0 - AI 文本工作流平台
 
-## 一、系统整体布局
+## 项目介绍
 
-**三栏设计**：
+TextWeaver 是一个强大的 AI 文本工作流平台，允许用户通过可视化的节点编辑器创建、配置和执行复杂的文本处理流程。用户可以通过拖拽节点、连接边来构建工作流，支持 AI 生成、文件读写、条件选择等多种节点类型。
 
-| 区域                       | 功能                                                                                                                 |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 左侧（File Explorer）      | 虚拟文件系统，显示文件夹/文件层级结构，支持创建/重命名/删除文件和文件夹，文件内容存储在数据库中（Markdown/纯文本）。 |
-| 中间（Flow Editor）        | AI 工作流可视化编辑器（React Flow），节点可拖拽、连接，可显示执行状态，节点可读取左侧文件或写入文件。从上到下排列                |
-| 右侧（Inspector / Editor） | 当前选中节点或文件的详细信息，支持编辑 Prompt、文件内容或节点配置。                                                  |
+### 核心功能
 
----
+- **可视化工作流编辑器**：通过 React Flow 实现的拖拽式节点编辑器
+- **多类型节点支持**：包括开始节点、AI 节点、文件读取节点、文件写入节点、文件夹写入节点、选择节点和结束节点
+- **实时执行状态**：通过 WebSocket 实时推送节点执行状态
+- **虚拟文件系统**：支持创建、编辑、删除文件和文件夹
+- **模板管理**：支持将工作流保存为模板并在模板市场中共享
+- **AI 服务配置**：支持配置和管理多个 AI 服务
+- **循环依赖检测**：防止工作流中出现循环依赖导致执行无法停止
 
-## 二、核心数据结构
+## 技术栈
 
-### 1. 虚拟文件系统（File Resource）
+### 前端
+- **框架**：React + TypeScript
+- **构建工具**：Vite
+- **样式**：Tailwind CSS
+- **工作流编辑器**：React Flow
+- **状态管理**：React useState + useContext
+- **WebSocket**：用于实时状态推送
+- **HTTP 客户端**：Axios
 
-**数据库表设计**：使用 SQLAlchemy ORM 定义，通过 Alembic 迁移管理
+### 后端
+- **框架**：FastAPI
+- **数据库**：PostgreSQL
+- **ORM**：SQLAlchemy
+- **数据库迁移**：Alembic
+- **WebSocket**：用于实时状态推送
+- **AI 服务集成**：支持多种 AI 服务提供商
 
-**模型定义示例**：
+## 项目结构
 
-```python
-# app/modules/files/models.py
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
-from sqlalchemy.sql import func
-from app.core.database import Base
-
-class File(Base):
-    __tablename__ = "files"
-
-    id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("files.id"), nullable=True)
-    name = Column(String, nullable=False)
-    type = Column(String, nullable=False)  # 'file' 或 'folder'
-    content = Column(Text, nullable=True)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-```
-
-- **文件夹**：`type = folder`，`content = NULL`
-- **文件**：`type = file`，`content` 存储 Markdown / 文本内容
-- **覆盖式写入**：AI 节点写入时直接更新 `content` 字段
-- **前端展示**：树形结构 + 可拖拽连接节点
-
----
-
-### 2. 工作流 Flow JSON Schema
+### 前端结构
 
 ```
-{
-  "id": "flow_001",
-  "name": "示例工作流",
-  "nodes": [
-    {
-      "id": "n1",
-      "type": "input",
-      "label": "用户输入",
-      "config": {
-        "source": "manual",
-        "content": "初始文本内容"
-      },
-      "outputs": ["n2"]
-    },
-    {
-      "id": "n2",
-      "type": "ai",
-      "label": "文本改写 AI",
-      "config": {
-        "model": "gpt-4o-mini",
-        "prompt_template": "请将以下文本改写为更口语化风格：\n{input}",
-        "max_tokens": 500,
-        "temperature": 0.7
-      },
-      "inputs": ["n1"],
-      "outputs": ["n3"]
-    },
-    {
-      "id": "n3",
-      "type": "file_writer",
-      "label": "写入文件",
-      "config": {
-        "file_id": 123,
-        "overwrite": true
-      },
-      "inputs": ["n2"],
-      "outputs": []
-    }
-  ],
-  "edges": [
-    { "from": "n1", "to": "n2" },
-    { "from": "n2", "to": "n3" }
-  ]
-}
+frontend/
+├── src/
+│   ├── api/          # API 客户端
+│   ├── components/   # 前端组件
+│   │   ├── Execution/     # 执行相关组件
+│   │   ├── FlowCanvas/    # 工作流画布组件
+│   │   ├── Inspector/     # 右侧检查器组件
+│   │   ├── common/        # 通用组件
+│   │   ├── filesystem/    # 文件系统组件
+│   │   ├── nodes/         # 节点组件
+│   │   ├── template/      # 模板相关组件
+│   │   └── workflow/      # 工作流相关组件
+│   ├── pages/        # 页面组件
+│   │   ├── auth/           # 认证页面
+│   │   └── dashboard/      # 仪表盘页面
+│   ├── services/     # 服务层
+│   ├── store/        # 状态管理
+│   ├── types/        # TypeScript 类型定义
+│   ├── utils/        # 工具函数
+│   ├── App.tsx       # 应用入口
+│   └── main.tsx      # 主入口
+├── .env             # 环境变量
+├── package.json     # 依赖管理
+└── vite.config.ts   # Vite 配置
 ```
 
-- `nodes`：节点列表，每个节点可配置不同类型
-- `edges`：节点连接关系
-- **AI 节点支持结构化 Prompt**，可以使用 `{input}` 或 `{file.content}` 占位符
-- **File Writer 节点**支持覆盖写入指定文件
-
----
-
-### 3. 节点类型定义
-
-| 类型        | 功能                     | config 关键字段                                         |
-| ----------- | ------------------------ | ------------------------------------------------------- |
-| input       | 用户手动输入文本         | `source: manual`, `content: string`                     |
-| ai          | 调用 OpenAI 模型生成文本 | `model`, `prompt_template`, `temperature`, `max_tokens` |
-| file_reader | 从文件读取内容           | `file_id`                                               |
-| file_writer | 将输出写入文件           | `file_id`, `overwrite: true/false`                      |
-| output      | 显示最终结果             | 无                                                      |
-
----
-
-## 三、后端执行模型（Flow Engine）
-
-**执行逻辑**：
-
-1. 接收 Flow JSON
-2. 按拓扑排序逐节点执行
-3. **AI 节点执行**：
-   - 解析 `prompt_template`，替换 `{input}` 或 `{file.content}` 占位符
-   - 调用 OpenAI API (`gpt-4o-mini`)
-   - 返回结果存入节点执行上下文
-4. **File Reader / Writer 节点**：
-   - Reader：读取 DB 中 `content` 字段
-   - Writer：写入 DB 中 `content` 字段（覆盖模式）
-5. 每个节点执行状态（pending / running / success / error）可实时返回前端
-6. Flow 完成后返回最终输出结果
-
-**Python FastAPI 示例执行模型（伪代码）**：
+### 后端结构
 
 ```
-for node in topo_sorted_nodes:
-    node.status = "running"
-    if node.type == "ai":
-        prompt = node.config["prompt_template"].format(**context)
-        result = call_openai(prompt, model=node.config["model"])
-        context[node.id] = result
-    elif node.type == "file_reader":
-        file_content = read_file(node.config["file_id"])
-        context[node.id] = file_content
-    elif node.type == "file_writer":
-        write_file(node.config["file_id"], context[node.inputs[0]])
-    node.status = "success"
+backend/
+├── app/
+│   ├── core/         # 核心配置
+│   ├── modules/      # 功能模块
+│   │   ├── auth/          # 认证模块
+│   │   ├── files/         # 文件系统模块
+│   │   ├── workflow/      # 工作流模块
+│   │   └── template/      # 模板模块
+│   └── services/     # 服务层
+├── alembic/         # 数据库迁移
+├── main.py          # 后端入口
+└── requirements.txt # 依赖管理
 ```
 
----
+## 安装与运行
 
-## 四、前端交互设计
+### 前端安装
 
-### 1. 左侧文件系统（考虑使用react flow自定义节点实现）
-
-- 树形 UI（React + Tailwind + Tree 组件）
-- 点击文件 / 文件夹 → 在右侧展示内容或配置
-- 拖拽文件到 AI 节点 → 自动在 Prompt 中生成 `{file.content}` 占位符
-
-### 2. 中间 Flow Editor
-
-- React Flow 实现拖拽 + 连线
-- 节点配置弹窗 / 右侧 inspector 编辑 Prompt 或参数
-- 点击 Run → POST Flow JSON → 后端顺序执行
-- 执行中可流式返回状态，节点颜色实时变化（灰→黄→绿/红）
-
-### 3. 右侧 Inspector
-
-- 显示选中节点或文件内容
-- 可编辑节点配置 / Prompt / 文件内容
-- 保存自动更新 DB / Flow JSON
-
----
-
-## 五、MVP 功能清单
-
-1. 创建 / 编辑 / 删除文件 & 文件夹（Markdown）
-2. 创建 / 编辑工作流（拖拽节点 + 连线）
-3. AI 节点支持结构化 Prompt（可引用上游节点或文件内容）
-4. File Reader / Writer 节点
-5. 一键执行工作流，显示执行状态
-6. 覆盖写入文件内容
-7. 右侧 Inspector 可编辑节点或文件配置
-8. 流程 JSON 可存储 / 加载
-
----
-
-## 六、技术栈推荐
-
-| 层         | 技术栈                                                    |
-| ---------- | --------------------------------------------------------- |
-| 前端       | React + VIte + Tailwind + React Flow + Monaco Editor      |
-| 后端       | Python + FastAPI + PostgreSQL + Redis（缓存节点执行状态） |
-| AI         | OpenAI GPT-4o-mini                                        |
-| 数据存储   | PostgreSQL（文件 / Flow / 用户）                          |
-| 数据库管理 | SQLAlchemy ORM + Alembic 迁移工具                         |
-
----
-
-## 七、数据库迁移管理
-
-### 核心概念
-
-- **SQLAlchemy ORM**：定义数据模型，替代手写 SQL
-- **Alembic**：管理数据库结构变更，支持版本控制和回滚
-
-### 主要操作
-
-#### 1. 生成迁移（模型变更时）
-
+1. 进入前端目录
 ```bash
-cd backend
-alembic revision --autogenerate -m "迁移描述"
+cd TextWeaver/frontend
 ```
 
-#### 2. 应用迁移
-
+2. 安装依赖
 ```bash
-cd backend
+npm install
+```
+
+3. 配置环境变量
+```bash
+cp .env.example .env
+# 编辑 .env 文件，设置 API 地址等配置
+```
+
+4. 运行开发服务器
+```bash
+npm run dev
+```
+
+### 后端安装
+
+1. 进入后端目录
+```bash
+cd TextWeaver/backend
+```
+
+2. 创建虚拟环境
+```bash
+python -m venv .venv
+```
+
+3. 激活虚拟环境
+```bash
+# Windows
+.venv\Scripts\Activate.ps1
+# Linux/Mac
+source .venv/bin/activate
+```
+
+4. 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+5. 配置数据库
+   - 确保 PostgreSQL 数据库已运行
+   - 在 `app/core/config.py` 中配置数据库连接信息
+
+6. 运行数据库迁移
+```bash
 alembic upgrade head
 ```
 
-#### 3. 回滚迁移（如果需要）
-
+7. 运行后端服务器
 ```bash
-cd backend
-alembic downgrade -1
+fastapi dev main.py
 ```
 
-#### 4. 查看迁移历史
+## 使用指南
 
-```bash
-cd backend
-alembic history
-```
+### 创建工作流
 
-### 首次启动自动初始化
+1. 登录系统
+2. 在仪表盘页面点击「创建工作流」
+3. 在工作流编辑器中，从右侧拖拽节点到画布
+4. 连接节点之间的边
+5. 点击节点，在右侧检查器中配置节点参数
+6. 点击「保存」按钮保存工作流
 
-- 本地开发：执行 `alembic upgrade head && python seed.py`
-- Docker 部署：首次启动时自动执行迁移和种子操作
+### 执行工作流
 
-### 数据库结构管理
+1. 在工作流详情页面点击「执行」按钮
+2. 观察节点执行状态变化
+3. 查看执行日志和结果
 
-- **添加新表**：创建模型文件 → 导入到 `alembic/env.py` → 生成迁移
-- **修改表结构**：修改模型文件 → 生成迁移 → 应用迁移
-- **数据填充**：使用 `seed.py` 脚本填充初始数据
+### 使用文件系统
+
+1. 在左侧文件浏览器中，点击「新建文件夹」或「新建文件」
+2. 点击文件查看和编辑内容
+3. 拖拽文件到 AI 节点，自动生成文件引用
+
+### 管理模板
+
+1. 在工作流详情页面，点击「保存为模板」
+2. 在模板管理页面查看和管理模板
+3. 从模板创建新工作流
+
+### 配置 AI 服务
+
+1. 在仪表盘页面点击「AI 服务配置」
+2. 添加或编辑 AI 服务配置
+3. 在 AI 节点中选择使用的 AI 服务
+
+## 节点类型说明
+
+### 1. 开始节点 (Start Node)
+- **功能**：工作流的起点，提供初始输入数据
+- **配置**：输入初始文本内容
+
+### 2. AI 节点 (AI Node)
+- **功能**：调用 AI 服务生成文本
+- **配置**：
+  - AI 服务选择
+  - 提示词模板
+  - 模型参数（温度、最大 token 等）
+
+### 3. 文件读取节点 (File Reader Node)
+- **功能**：从文件系统读取文件内容
+- **配置**：选择要读取的文件
+
+### 4. 文件写入节点 (File Writer Node)
+- **功能**：将数据写入指定文件
+- **配置**：
+  - 选择目标文件
+  - 写入模式（覆盖/追加）
+
+### 5. 文件夹写入节点 (Folder Writer Node)
+- **功能**：在指定文件夹中创建新文件并写入内容
+- **配置**：选择目标文件夹
+
+### 6. 选择节点 (Select Node)
+- **功能**：根据 AI 判断选择不同的输出路径
+- **配置**：
+  - 提示词模板
+  - 输出节点配置
+
+### 7. 结束节点 (End Node)
+- **功能**：工作流的终点，显示最终结果
+- **配置**：无特殊配置
+
+## 注意事项
+
+1. **循环依赖**：避免将后面节点的输出接入前面节点的输入，会导致循环依赖错误
+2. **节点连接**：确保所有节点都正确连接，特别是输入和输出端口
+3. **AI 服务配置**：使用前确保 AI 服务配置正确且可用
+4. **文件权限**：确保有足够权限读写文件系统
+5. **执行时间**：复杂工作流可能需要较长执行时间，请耐心等待
+
+## 故障排除
+
+### 常见问题
+
+1. **工作流执行失败**：检查节点配置是否正确，特别是 AI 服务配置和文件路径
+2. **节点状态不更新**：检查 WebSocket 连接是否正常
+3. **文件写入失败**：检查目标文件夹是否存在且有写入权限
+4. **循环依赖错误**：检查工作流中是否存在循环连接，重新调整节点连接
+
+### 错误信息
+
+- **"Workflow contains circular dependencies, which is not allowed"**：工作流中存在循环依赖，请检查节点连接
+- **"文件夹写入失败: 文件夹不存在"**：目标文件夹不存在，请先创建文件夹
+- **"AI 服务调用失败"**：AI 服务配置错误或不可用，请检查 AI 服务配置
+
+## 版本历史
+
+- **v1.0**：初始版本
+  - 实现完整的工作流编辑器
+  - 支持多种节点类型
+  - 实时执行状态推送
+  - 虚拟文件系统
+  - 模板管理
+  - 循环依赖检测
+
+## 扩展建议
+
+1. **添加更多节点类型**：如翻译节点、总结节点、分析节点等
+2. **支持更多 AI 模型**：集成更多 AI 服务提供商
+3. **添加工作流调度**：支持定时执行和触发式执行
+4. **增强文件系统**：支持更多文件类型和操作
+5. **添加用户权限管理**：支持多用户协作
+6. **添加工作流版本控制**：支持工作流的历史版本管理
+
+## 联系与支持
+
+如有问题或建议，请联系项目维护者。
 
 ---
 
-## 八、扩展空间
-
-- 后续支持 File Versioning / Undo / Redo
-- 支持多用户协作 / 权限管理
-- 支持更多 AI 节点类型（翻译、总结、分析、分类）
-- 支持远程触发 / 自动执行 / 调度
-- 支持真实磁盘或云存储文件系统替换虚拟文件系统
-
----
-
-## 九、应用领域
-
-完全可以的！你的 **AI 工作流平台**本质上是一个 **可视化、节点化、文件驱动的文本生成与处理系统**，小说创作只是一个应用场景。换思路，你可以把它看作一个 **“生成式文本工作流引擎”**，几乎所有文本相关的任务都能做。下面列几个方向：
-
----
-
-## 1. 文案创作 / 内容生成
-
-- **应用场景**：广告文案、社交媒体帖子、营销邮件
-- **工作流示例**：
-  - 输入产品信息 → AI 节点生成标题/广告文案 → 文案优化节点 → 文件写入
-- **特点**：可以批量生成多版本文案，节点化控制风格、口吻、长度
-
----
-
-## 2. 报告/总结生成
-
-- **应用场景**：会议纪要、研究报告、数据分析总结
-- **工作流示例**：
-  - 输入原始数据或文档 → 文件读取节点 → AI 节点生成摘要 → 文件写入
-- **特点**：支持多源文档聚合，自动生成条理清晰的报告
-
----
-
-## 3. 教育 / 学习辅助
-
-- **应用场景**：自动生成学习资料、试题、答案解析
-- **工作流示例**：
-  - 输入教材或知识点 → AI 节点生成练习题 → AI 节点生成答案解析 → 文件写入
-- **特点**：可按章节或主题组织，自动更新知识库
-
----
-
-## 4. 客服 / 问答系统构建
-
-- **应用场景**：企业内部知识库问答、FAQ 自动生成
-- **工作流示例**：
-  - 输入产品文档 → AI 节点生成问答对 → 文件写入
-  - 后续可用作 chatbot 数据源
-- **特点**：可迭代优化，支持上下文更新
-
----
-
-## 5. 翻译 / 文本风格转换
-
-- **应用场景**：多语言翻译、文本风格改写（正式↔口语、文学↔简报）
-- **工作流示例**：
-  - 文件读取 → AI 节点翻译/改写 → 文件写入 → 后续可再次改写或检查
-- **特点**：支持多轮迭代，保证一致性和风格统一
-
----
-
-## 6. 数据清洗 / 结构化文本生成
-
-- **应用场景**：从非结构化文本生成结构化表格或 JSON
-- **工作流示例**：
-  - 文本输入 → AI 节点提取信息 → AI 节点生成 JSON/CSV → 文件写入
-- **特点**：可扩展到文档解析、信息抽取等任务
+**TextWeaver v1.0** - 让 AI 文本处理变得简单高效！
