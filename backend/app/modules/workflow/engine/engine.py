@@ -40,6 +40,47 @@ class ExecutionEngine:
     def __init__(self, db: Session):
         self.db = db
     
+    def _detect_circular_dependency(self, nodes: List[models.Node], edges: List[models.Edge]) -> bool:
+        """检测工作流是否存在循环依赖
+        
+        Args:
+            nodes: 工作流节点列表
+            edges: 工作流边列表
+            
+        Returns:
+            bool: 如果存在循环依赖返回True，否则返回False
+        """
+        # 构建邻接表
+        adj = {node.id: [] for node in nodes}
+        in_degree = {node.id: 0 for node in nodes}
+        
+        # 填充邻接表和入度表
+        for edge in edges:
+            adj[edge.source_node_id].append(edge.target_node_id)
+            in_degree[edge.target_node_id] += 1
+        
+        # 初始化队列，将所有入度为0的节点加入
+        queue = []
+        for node_id in in_degree:
+            if in_degree[node_id] == 0:
+                queue.append(node_id)
+        
+        # 拓扑排序
+        count = 0
+        while queue:
+            current = queue.pop(0)
+            count += 1
+            
+            # 遍历所有相邻节点
+            for neighbor in adj[current]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+        
+        # 如果所有节点都被访问，说明没有循环依赖
+        # 否则，存在循环依赖
+        return count != len(nodes)
+
     def execute_workflow_async(self, flow_id: int, user_id: int, inputs: Dict[str, Any] = None, execution_id: int = None):
         """异步执行工作流
         
@@ -74,6 +115,10 @@ class ExecutionEngine:
             # 获取工作流的节点和边
             nodes = crud.get_nodes_by_flow(self.db, flow_id=flow_id, user_id=user_id)
             edges = crud.get_edges_by_flow(self.db, flow_id=flow_id, user_id=user_id)
+            
+            # 检测循环依赖
+            if self._detect_circular_dependency(nodes, edges):
+                raise ValueError("Workflow contains circular dependencies, which is not allowed")
             
             # 构建节点映射
             node_map = {node.id: node for node in nodes}
@@ -156,6 +201,10 @@ class ExecutionEngine:
             # 获取工作流的节点和边
             nodes = crud.get_nodes_by_flow(self.db, flow_id=flow_id, user_id=user_id)
             edges = crud.get_edges_by_flow(self.db, flow_id=flow_id, user_id=user_id)
+            
+            # 检测循环依赖
+            if self._detect_circular_dependency(nodes, edges):
+                raise ValueError("Workflow contains circular dependencies, which is not allowed")
             
             # 构建节点映射
             node_map = {node.id: node for node in nodes}

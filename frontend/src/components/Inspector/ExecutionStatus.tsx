@@ -135,6 +135,11 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({
               {execution.status === "cancelled" && "已取消"}
             </span>
           </div>
+          {execution.status === "error" && execution.error_message && (
+            <div className="mt-2 text-xs text-red-700 bg-red-50 p-2 rounded border border-red-200">
+              错误原因: {execution.error_message}
+            </div>
+          )}
         </div>
 
         <div>

@@ -101,6 +101,9 @@ const WorkflowDetail: React.FC = () => {
   });
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] =
     useState<boolean>(false);
+  const [showNodeGuideDialog, setShowNodeGuideDialog] =
+    useState<boolean>(false);
+  const [currentNodeGuideIndex, setCurrentNodeGuideIndex] = useState<number>(0);
 
   const handleBack = () => {
     navigate("/dashboard/workflows");
@@ -570,6 +573,62 @@ const WorkflowDetail: React.FC = () => {
     }
   };
 
+  // 节点指南数据
+  const nodeGuides = [
+    {
+      id: "start",
+      title: "开始节点",
+      description: "工作流的起点，用于触发整个工作流的执行。",
+      usage: "将开始节点连接到第一个处理节点，工作流执行时会从这里开始。",
+      icon: "▶️",
+    },
+    {
+      id: "end",
+      title: "结束节点",
+      description: "工作流的终点，标记工作流执行完成。",
+      usage:
+        "将最后一个处理节点连接到结束节点，当执行到结束节点时，工作流会正常结束。",
+      icon: "⏹️",
+    },
+    {
+      id: "ai",
+      title: "AI 节点",
+      description: "使用AI模型处理输入数据，生成输出结果。",
+      usage:
+        "配置AI模型和提示词，输入数据会被插入到提示词中，AI生成的结果会作为输出。",
+      icon: "🤖",
+    },
+    {
+      id: "fileReader",
+      title: "文件读取节点",
+      description: "读取指定文件的内容作为输入。",
+      usage: "配置文件路径，执行时会读取文件内容并传递给下一个节点。",
+      icon: "📖",
+    },
+    {
+      id: "fileWriter",
+      title: "文件写入节点",
+      description: "将输入数据写入到指定文件。",
+      usage: "配置文件路径和写入模式，执行时会将输入数据写入到文件中。",
+      icon: "✏️",
+    },
+    {
+      id: "folderWriter",
+      title: "文件夹写入节点",
+      description: "将输入数据写入到指定文件夹中的新文件。",
+      usage: "配置文件夹路径，执行时会在文件夹中创建新文件并写入数据。",
+      icon: "📁",
+    },
+    {
+      id: "select",
+      title: "选择节点",
+      description: "根据AI的判断选择一个输出节点。",
+      usage:
+        "配置提示词，AI会根据输入数据和提示词选择一个输出节点，只有被选择的节点会执行。",
+      icon: "🔀",
+    },
+  ];
+
   const handleDeleteNode = async (nodeId: string) => {
     if (!workflowId) return;
 
@@ -773,6 +832,25 @@ const WorkflowDetail: React.FC = () => {
               />
             </svg>
             <span>保存为模板</span>
+          </button>
+          <button
+            onClick={() => setShowNodeGuideDialog(true)}
+            className="p-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            title="节点使用指南"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
           </button>
           <button
             onClick={handleExecute}
@@ -1075,6 +1153,115 @@ const WorkflowDetail: React.FC = () => {
           alert("模板保存成功！");
         }}
       />
+
+      {/* 节点指南弹窗 */}
+      {showNodeGuideDialog && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96 max-w-[90vw]">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">节点使用指南</h3>
+              <button
+                onClick={() => setShowNodeGuideDialog(false)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <svg
+                  className="w-5 h-5 text-gray-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="text-center mb-4">
+                <div className="inline-block p-4 bg-indigo-100 rounded-full mb-4">
+                  <span className="text-4xl">
+                    {nodeGuides[currentNodeGuideIndex].icon}
+                  </span>
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                  {nodeGuides[currentNodeGuideIndex].title}
+                </h4>
+                <div className="text-sm text-gray-600 mb-4">
+                  {nodeGuides[currentNodeGuideIndex].description}
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 mb-4">
+                  <strong>使用方法：</strong>
+                  {nodeGuides[currentNodeGuideIndex].usage}
+                </div>
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg text-sm text-yellow-800">
+                  <div className="flex items-start">
+                    <div className="shrink-0 pt-0.5">
+                      <svg
+                        className="w-5 h-5 text-yellow-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="font-medium">注意事项：</p>
+                      <p className="mt-1">
+                        不要将后面节点的输出接入前面节点的输入，这会造成循环依赖，导致工作流执行失败或出现异常行为。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() =>
+                  setCurrentNodeGuideIndex((prev) =>
+                    prev === 0 ? nodeGuides.length - 1 : prev - 1,
+                  )
+                }
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                上一个
+              </button>
+              <div className="flex space-x-1">
+                {nodeGuides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentNodeGuideIndex(index)}
+                    className={`w-3 h-3 rounded-full transition-colors ${
+                      index === currentNodeGuideIndex
+                        ? "bg-indigo-600"
+                        : "bg-gray-300 hover:bg-gray-400"
+                    }`}
+                    aria-label={`第 ${index + 1} 个节点`}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() =>
+                  setCurrentNodeGuideIndex((prev) =>
+                    prev === nodeGuides.length - 1 ? 0 : prev + 1,
+                  )
+                }
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                下一个
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
