@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 interface PromptEditorProps {
   value: string;
@@ -17,16 +17,12 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   onChange,
   variables,
 }) => {
-  const [selectedVariable, setSelectedVariable] = useState<string | null>(null);
 
   const handleInsertVariable = (variableName: string) => {
     const newText = value.slice(0, value.length) + `{${variableName}}`;
     onChange(newText);
   };
 
-  const handleVariableClick = (variableName: string) => {
-    setSelectedVariable(variableName);
-  };
 
   return (
     <div className="space-y-4">

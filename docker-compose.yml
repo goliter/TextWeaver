@@ -1,22 +1,58 @@
+version: '3.8'
 
 services:
-  postgres:
+  # PostgreSQL 数据库
+  db:
     image: postgres:15-alpine
-    container_name: textweaver-db
+    container_name: db
     environment:
-      POSTGRES_USER: textweaver      # 用户名
-      POSTGRES_PASSWORD: password   # 密码（生产环境要改）
-      POSTGRES_DB: textweaver_dev    # 数据库名
-    ports:
-      - "5432:5432"                 # 本地端口:容器端口
+      POSTGRES_DB: textweaver-test
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 1234567890
     volumes:
-      # 数据持久化
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U textweaver -d textweaver_dev"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - textweaver-network
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+    container_name: textweaver-backend
+    environment:
+      DATABASE_URL: postgresql://admin:1234567890@db:5432/textweaver-test
+      SECRET_KEY: your_secret_key_here
+      AI_API_KEY: sk-EiDY5iKxUcQdU8mWiAM0slCLM8sRaIuSKlzGfBLDgQJSRvAR
+      OPENAI_API_BASE: https://jeniya.top/v1
+      OPENAI_MODEL: gemini-2.0-flash
+      LANGCHAIN_VERBOSE: "false"
+      LANGCHAIN_TEMPERATURE: "0.7"
+      LANGCHAIN_MAX_TOKENS: "2000"
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - textweaver-network
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+    container_name: textweaver-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - textweaver-network
+
+networks:
+  textweaver-network:
+    driver: bridge
 
 volumes:
   postgres_data:

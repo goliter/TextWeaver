@@ -35,7 +35,7 @@ class WebSocketService {
     this.ws = new WebSocket(this.url);
 
     // 连接成功
-    this.ws.onopen = (event) => {
+    this.ws.onopen = () => {
       console.log("WebSocket已经连接");
       this.reconnectAttempts = 0;
       // 开始心跳
@@ -148,7 +148,9 @@ export const createWebSocketService = (
   executionId: number,
   token: string,
 ): WebSocketService => {
-  const wsUrl = `ws://localhost:8000/ws/execution/${executionId}?token=${token}`;
+  const protocol: string =
+    window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${protocol}//${window.location.host}/ws/execution/${executionId}?token=${token}`;
   return new WebSocketService(wsUrl);
 };
 

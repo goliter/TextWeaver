@@ -81,7 +81,7 @@ const WorkflowDetail: React.FC = () => {
 
   // WebSocket连接
   const token = getToken();
-  const { socket, isConnected, onMessage, connectWebSocket } = useWebSocket(
+  const { socket, onMessage, connectWebSocket } = useWebSocket(
     currentExecutionId,
     token,
   );
