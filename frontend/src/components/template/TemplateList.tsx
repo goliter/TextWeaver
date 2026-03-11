@@ -7,6 +7,7 @@ import {
 } from "@/api/template";
 import TemplateCard from "./TemplateCard";
 import UseTemplateDialog from "./UseTemplateDialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import type { WorkflowTemplate } from "@/types/template";
 
 interface TemplateListProps {
@@ -27,6 +28,12 @@ const TemplateList: React.FC<TemplateListProps> = ({
   const [sharingTemplates, setSharingTemplates] = useState<Set<number>>(
     new Set(),
   );
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showUnshareDialog, setShowUnshareDialog] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<number | null>(null);
+  const [templateToUnshare, setTemplateToUnshare] = useState<number | null>(
+    null,
+  );
 
   const loadTemplates = async () => {
     try {
@@ -45,17 +52,23 @@ const TemplateList: React.FC<TemplateListProps> = ({
     loadTemplates();
   }, []);
 
-  const handleDelete = async (templateId: number) => {
-    if (!confirm("确定要删除这个模板吗？此操作不可撤销。")) {
-      return;
-    }
+  const handleDelete = (templateId: number) => {
+    setTemplateToDelete(templateId);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!templateToDelete) return;
 
     try {
-      await deleteTemplate(templateId);
+      await deleteTemplate(templateToDelete);
       loadTemplates();
       onRefresh?.();
     } catch (err: any) {
       alert(err.response?.data?.detail || "删除模板失败");
+    } finally {
+      setShowDeleteDialog(false);
+      setTemplateToDelete(null);
     }
   };
 
@@ -85,22 +98,28 @@ const TemplateList: React.FC<TemplateListProps> = ({
     }
   };
 
-  const handleUnshare = async (templateId: number) => {
-    if (!confirm("确定要取消分享这个模板吗？它将不再出现在模板市场中。")) {
-      return;
-    }
-    setSharingTemplates((prev) => new Set(prev).add(templateId));
+  const handleUnshare = (templateId: number) => {
+    setTemplateToUnshare(templateId);
+    setShowUnshareDialog(true);
+  };
+
+  const confirmUnshare = async () => {
+    if (!templateToUnshare) return;
+
+    setSharingTemplates((prev) => new Set(prev).add(templateToUnshare));
     try {
-      await unshareTemplate(templateId);
+      await unshareTemplate(templateToUnshare);
       loadTemplates();
     } catch (err: any) {
       alert(err.response?.data?.detail || "取消分享失败");
     } finally {
       setSharingTemplates((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(templateId);
+        newSet.delete(templateToUnshare);
         return newSet;
       });
+      setShowUnshareDialog(false);
+      setTemplateToUnshare(null);
     }
   };
 
@@ -181,6 +200,33 @@ const TemplateList: React.FC<TemplateListProps> = ({
           setSelectedTemplate(null);
         }}
         onSuccess={handleUseSuccess}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="确认删除"
+        message="确定要删除这个模板吗？此操作不可撤销。"
+        confirmText="删除"
+        cancelText="取消"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setShowDeleteDialog(false);
+          setTemplateToDelete(null);
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={showUnshareDialog}
+        title="确认取消分享"
+        message="确定要取消分享这个模板吗？它将不再出现在模板市场中。"
+        confirmText="取消分享"
+        cancelText="取消"
+        onConfirm={confirmUnshare}
+        onCancel={() => {
+          setShowUnshareDialog(false);
+          setTemplateToUnshare(null);
+        }}
       />
     </>
   );
