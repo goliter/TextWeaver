@@ -60,7 +60,9 @@ const Register: React.FC = () => {
             创建账号
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            或{" "}
+            或{
+              " "
+            }
             <Link
               to="/login"
               className="font-medium text-indigo-600 hover:text-purple-600 transition-colors"
@@ -95,7 +97,13 @@ const Register: React.FC = () => {
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    // 只有当用户开始输入时才清除错误信息
+                    if (error) {
+                      setError("");
+                    }
+                  }}
                   placeholder="your-username"
                   disabled={loading}
                 />
@@ -119,7 +127,13 @@ const Register: React.FC = () => {
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    // 只有当用户开始输入时才清除错误信息
+                    if (error) {
+                      setError("");
+                    }
+                  }}
                   placeholder="your@email.com"
                   disabled={loading}
                 />
@@ -143,7 +157,13 @@ const Register: React.FC = () => {
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    // 只有当用户开始输入时才清除错误信息
+                    if (error) {
+                      setError("");
+                    }
+                  }}
                   placeholder="••••••••"
                   disabled={loading}
                 />
@@ -167,7 +187,13 @@ const Register: React.FC = () => {
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    // 只有当用户开始输入时才清除错误信息
+                    if (error) {
+                      setError("");
+                    }
+                  }}
                   placeholder="••••••••"
                   disabled={loading}
                 />
@@ -188,24 +214,6 @@ const Register: React.FC = () => {
             >
               {loading ? "注册中..." : "注册"}
             </button>
-          </div>
-
-          {/* 服务条款 */}
-          <div className="text-center text-sm text-gray-600">
-            注册即表示您同意我们的
-            <a
-              href="#"
-              className="font-medium text-indigo-600 hover:text-purple-600 transition-colors mx-1"
-            >
-              服务条款
-            </a>
-            和
-            <a
-              href="#"
-              className="font-medium text-indigo-600 hover:text-purple-600 transition-colors mx-1"
-            >
-              隐私政策
-            </a>
           </div>
 
           {/* 返回首页链接 */}

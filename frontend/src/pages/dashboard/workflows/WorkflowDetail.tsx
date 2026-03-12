@@ -512,7 +512,7 @@ const WorkflowDetail: React.FC = () => {
         nodeData.data.name = "end";
       } else if (nodeType === "ai") {
         nodeData.data.model = "gpt-3.5-turbo";
-        nodeData.data.prompt = "请总结以下内容: {{input}}";
+        nodeData.data.prompt = "请总结以下内容: {input}";
       } else if (nodeType === "fileReader") {
         nodeData.data.filePath = fileData?.path || "";
         nodeData.data.encoding = "utf-8";
@@ -524,7 +524,7 @@ const WorkflowDetail: React.FC = () => {
         nodeData.data.folderPath = fileData?.path || "";
         nodeData.data.folderId = fileData?.id || "";
       } else if (nodeType === "select") {
-        nodeData.data.prompt = "请根据输入数据选择一个输出节点: {{input}}";
+        nodeData.data.prompt = "请根据输入数据选择一个输出节点: {input}";
       }
 
       const newNode = await workflowApi.createNode(

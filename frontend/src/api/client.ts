@@ -43,9 +43,12 @@ api.interceptors.response.use(
   },
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // token过期或无效，清除本地存储并跳转到登录页
+      // token过期或无效，清除本地存储
       localStorage.removeItem("auth-storage");
-      window.location.href = "/login";
+      // 只有当当前不在登录页时才跳转到登录页
+      if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/register")) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   },
