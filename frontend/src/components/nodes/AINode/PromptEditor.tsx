@@ -6,9 +6,11 @@ interface PromptEditorProps {
   variables: Array<{
     id: string;
     name: string;
-    sourceNodeId: string;
-    sourceNodeName: string;
-    type: "input" | "file";
+    sourceNodeId?: string;
+    sourceNodeName?: string;
+    targetNodeId?: string;
+    targetNodeName?: string;
+    type: "input" | "file" | "output";
   }>;
 }
 
@@ -17,12 +19,10 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   onChange,
   variables,
 }) => {
-
   const handleInsertVariable = (variableName: string) => {
     const newText = value.slice(0, value.length) + `{${variableName}}`;
     onChange(newText);
   };
-
 
   return (
     <div className="space-y-4">
@@ -55,17 +55,24 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
                       className={`px-2 py-1 text-xs font-medium rounded ${
                         variable.type === "input"
                           ? "bg-blue-100 text-blue-800"
-                          : "bg-green-100 text-green-800"
+                          : variable.type === "output"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-green-100 text-green-800"
                       }`}
                     >
-                      {variable.type === "input" ? "输入" : "文件"}
+                      {variable.type === "input"
+                        ? "输入"
+                        : variable.type === "output"
+                          ? "输出"
+                          : "文件"}
                     </span>
                     <span className="font-mono text-sm font-medium">
                       {`{${variable.name}}`}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    来源: {variable.sourceNodeName}
+                    {variable.type === "output" ? "目标: " : "来源: "}{" "}
+                    {variable.targetNodeName || variable.sourceNodeName}
                   </div>
                 </div>
                 <button

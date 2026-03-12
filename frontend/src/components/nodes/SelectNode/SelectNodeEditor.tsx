@@ -53,6 +53,7 @@ const SelectNodeEditor: React.FC<SelectNodeEditorProps> = ({
           targetNodeId: edge.target,
           targetNodeName: `节点 ${edge.target}`,
           handle: edge.sourceHandle || "bottom",
+          type: "output" as const,
         });
       }
     });
