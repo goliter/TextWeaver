@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL 数据库
@@ -30,7 +30,7 @@ services:
       OPENAI_MODEL: gemini-2.0-flash
       LANGCHAIN_VERBOSE: "false"
       LANGCHAIN_TEMPERATURE: "0.7"
-      LANGCHAIN_MAX_TOKENS: "2000"
+      LANGCHAIN_MAX_TOKENS: "200000"
     depends_on:
       - db
     restart: unless-stopped

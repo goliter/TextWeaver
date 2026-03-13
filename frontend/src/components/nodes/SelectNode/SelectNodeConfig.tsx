@@ -41,6 +41,7 @@ const SelectNodeConfig: React.FC<SelectNodeConfigProps> = ({
           targetNodeId: edge.target,
           targetNodeName: `节点 ${edge.target}`,
           handle: edge.sourceHandle || "bottom",
+          type: "output" as const,
         });
       }
     });
@@ -49,7 +50,6 @@ const SelectNodeConfig: React.FC<SelectNodeConfigProps> = ({
   };
 
   const { topInputs, outputNodes } = analyzeDataSources();
-
 
   return (
     <div className="space-y-4">
