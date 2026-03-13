@@ -150,6 +150,11 @@ def update_node_file_paths(
                 for old_node_id, new_node_id in original_to_new_node_mapping.items():
                     prompt = prompt.replace(f'{{input_{old_node_id}}}', f'{{input_{new_node_id}}}')
             
+            # 替换输出节点占位符 {output_104}
+            if original_to_new_node_mapping:
+                for old_node_id, new_node_id in original_to_new_node_mapping.items():
+                    prompt = prompt.replace(f'{{output_{old_node_id}}}', f'{{output_{new_node_id}}}')
+            
             if prompt != original_prompt:
                 node_data['prompt'] = prompt
                 updated = True
