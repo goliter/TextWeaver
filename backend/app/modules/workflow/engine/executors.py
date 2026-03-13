@@ -219,9 +219,9 @@ class FileWriterNodeExecutor(BaseNodeExecutor):
                 content = str(input_data)
             else:
                 # AI修改模式
-                ai_prompt = node.data.get("aiPrompt", "")
-                if not ai_prompt:
-                    raise ValueError("AI修改模式缺少aiPrompt配置")
+                prompt = node.data.get("prompt", "")
+                if not prompt:
+                    raise ValueError("AI修改模式缺少prompt配置")
                 
                 # 获取原文件内容
                 original_content = file_service.read_file(file_id, encoding)
@@ -255,7 +255,6 @@ class FileWriterNodeExecutor(BaseNodeExecutor):
                             variables[var_name] = left_input
                 
                 # 替换提示词中的变量
-                prompt = ai_prompt
                 for var_name, var_value in variables.items():
                     prompt = prompt.replace(f"{{{var_name}}}", str(var_value))
                 

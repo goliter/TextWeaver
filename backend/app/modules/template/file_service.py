@@ -102,6 +102,7 @@ def update_node_file_paths(
         original_to_new_node_mapping = {}
         for template_node in template_nodes:
             # 找到对应的新节点
+            # 现在节点类型已经在创建时标准化，直接匹配即可
             new_node = db.query(Node).filter(
                 Node.flow_id == flow_id,
                 Node.node_type == template_node.node_type,
@@ -116,7 +117,7 @@ def update_node_file_paths(
         node_data = node.data.copy() if node.data else {}
         
         # 根据节点类型更新文件引用
-        if node.node_type in ['file_reader', 'file_writer']:
+        if node.node_type in ['file_reader', 'file_writer', 'fileWriter']:
             # 文件读取/写入节点
             if 'fileId' in node_data:
                 old_file_id = node_data.get('fileId')

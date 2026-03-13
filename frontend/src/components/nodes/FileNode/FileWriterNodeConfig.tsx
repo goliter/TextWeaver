@@ -40,7 +40,7 @@ const FileWriterNodeConfig: React.FC<FileWriterNodeConfigProps> = ({
             AI修改提示词
           </label>
           <div className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-700 min-h-[100px] whitespace-pre-wrap">
-            {node.data?.aiPrompt || "-"}
+            {node.data?.prompt || "-"}
           </div>
         </div>
       )}

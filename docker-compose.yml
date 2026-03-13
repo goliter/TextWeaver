@@ -21,6 +21,7 @@ services:
   backend:
     build:
       context: ./backend
+    image: goliter/textweaver-backend:v1.0
     container_name: textweaver-backend
     environment:
       DATABASE_URL: postgresql://admin:1234567890@db:5432/textweaver-test
@@ -41,6 +42,7 @@ services:
   frontend:
     build:
       context: ./frontend
+    image: goliter/textweaver-frontend:v1.0
     container_name: textweaver-frontend
     ports:
       - "80:80"

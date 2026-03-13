@@ -283,7 +283,7 @@ class FileWriterNodeData(BaseModel):
     fileId: int
     mode: str = "direct"  # "direct" or "ai"
     overwrite: bool = True
-    aiPrompt: Optional[str] = None
+    prompt: Optional[str] = None
 
 
 # 更新前向引用

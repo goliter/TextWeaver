@@ -208,8 +208,8 @@ const FileWriterNodeEditor: React.FC<FileWriterNodeEditorProps> = ({
                 leftInputs={leftInputs}
               />
               <AIPromptEditor
-                value={formData.aiPrompt || ""}
-                onChange={(value) => handleChange("aiPrompt", value)}
+                value={formData.prompt || ""}
+                onChange={(value) => handleChange("prompt", value)}
               />
             </>
           )}

@@ -191,8 +191,20 @@ def use_template(
         node_id_mapping = {}
         original_to_new_node_mapping = {}
         for template_node in template.nodes:
+            # 标准化节点类型，确保使用后端标准格式
+            node_type = template_node.node_type
+            # 转换前端格式到后端标准格式
+            if node_type == 'fileReader':
+                normalized_node_type = 'file_reader'
+            elif node_type == 'fileWriter':
+                normalized_node_type = 'file_writer'
+            elif node_type == 'folderWriter':
+                normalized_node_type = 'folder_writer'
+            else:
+                normalized_node_type = node_type
+            
             node_data = workflow_schemas.NodeCreate(
-                node_type=template_node.node_type,
+                node_type=normalized_node_type,
                 name=template_node.name,
                 position=template_node.position,
                 data=template_node.data
