@@ -534,6 +534,20 @@ class SelectNodeExecutor(BaseNodeExecutor):
             prompt = prompt.replace(f"{{{var_name}}}", node_id)
         
         try:
+            # 检查是否指定了AI服务配置
+            ai_service_id = node.data.get("ai_service_id")
+            if ai_service_id:
+                # 加载用户配置的AI服务
+                from app.modules.ai.crud import get_ai_service
+                ai_service_config = get_ai_service(self.db, ai_service_id, node.flow.user_id)
+                if ai_service_config:
+                    # 创建使用用户配置的AI服务
+                    self.ai_service = LangChainService(
+                        api_key=ai_service_config.api_key,
+                        api_base=ai_service_config.api_base,
+                        model=ai_service_config.model
+                    )
+            
             # 调用AI服务选择输出节点
             selection = self.ai_service.generate_text(prompt)
             
