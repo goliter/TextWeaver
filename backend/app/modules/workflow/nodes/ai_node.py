@@ -26,12 +26,31 @@ class AINodeExecutor(NodeExecutor):
         
         prompt = node.data.get("prompt", "请处理以下内容: {input}")
         system_prompt = node.data.get("system_prompt", "")
+        use_ai = node.data.get("use_ai", True)  # 默认使用AI
         
         # 获取输入内容，优先使用 output 字段（统一输出格式）
         input_content = input_data.get("output", "")
         
         # 确保 input_data 包含 input 字段（用于提示词模板）
         input_data = {"input": input_content, **input_data}
+        
+        # 检查是否需要使用AI处理
+        if not use_ai:
+            # 不使用AI，直接返回提示词内容
+            # 替换提示词中的变量
+            import re
+            def replace_var(match):
+                var_name = match.group(1)
+                return str(input_data.get(var_name, f"{{{var_name}}}"))
+            
+            result = re.sub(r"\{(\w+)\}", replace_var, prompt)
+            
+            output_data = {
+                "output": result
+            }
+            
+            logger.info(f"AI node executed without AI: {node.name}")
+            return output_data
         
         # 使用 LangChain 生成文本
         try:

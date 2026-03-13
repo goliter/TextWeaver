@@ -147,6 +147,26 @@ const AINodeEditor: React.FC<AINodeEditorProps> = ({
               </select>
             )}
           </div>
+          <div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="use_ai"
+                checked={formData.use_ai !== false} // 默认勾选
+                onChange={(e) => handleChange("use_ai", e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label
+                htmlFor="use_ai"
+                className="ml-2 block text-sm text-gray-700"
+              >
+                使用 AI 处理
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              取消勾选后，该节点的输出将直接使用提示词内容，不调用 AI 服务
+            </p>
+          </div>
           <DataSourceManager topInputs={topInputs} leftInputs={leftInputs} />
           <PromptEditor
             value={formData.prompt || ""}

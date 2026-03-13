@@ -61,6 +61,11 @@ const AINodeConfig: React.FC<AINodeConfigProps> = ({ node, edges = [] }) => {
         "模型",
         node.data?.ai_service_id ? "自定义服务" : "gemini-2.0-flash",
       )}
+      
+      {renderReadOnlyField(
+        "使用 AI 处理",
+        node.data?.use_ai !== false ? "是" : "否",
+      )}
 
       <div>
         <label className="block text-xs font-medium text-gray-500 mb-2">

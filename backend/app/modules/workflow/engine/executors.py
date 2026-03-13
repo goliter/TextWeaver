@@ -367,6 +367,28 @@ class AINodeExecutor(BaseNodeExecutor):
         for var_name, var_value in variables.items():
             prompt = prompt.replace(f"{{{var_name}}}", str(var_value))
         
+        # 检查是否需要使用AI处理
+        use_ai = node.data.get("use_ai", True)  # 默认使用AI
+        if not use_ai:
+            # 不使用AI，直接返回提示词内容
+            content = prompt
+            
+            # 构建输出数据
+            outputs = {}
+            
+            # 获取输出配置
+            output_config = node.data.get("outputs", {})
+            
+            # 下侧输出
+            if output_config.get("bottom") or not output_config:
+                outputs["bottom"] = content
+            
+            # 右侧输出
+            if output_config.get("right") or not output_config:
+                outputs["right"] = content
+            
+            return outputs
+        
         try:
             # 检查是否指定了AI服务配置
             ai_service_id = node.data.get("ai_service_id")
