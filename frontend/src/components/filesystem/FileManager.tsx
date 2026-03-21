@@ -1,21 +1,22 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState, useCallback, useRef } from "react";
-import type { FileResponse } from "@/types/filesystem";
+import type { FileBaseResponse, FileResponse } from "@/types/filesystem";
 import { FileType } from "@/types/filesystem";
 
 interface FileTreeItemProps {
-  file: FileResponse;
+  file: FileBaseResponse;
   level: number;
   expandedFolders: Set<number>;
   selectedFileId: number | null;
   onToggleFolder: (folderId: number) => void;
   onSelectFile: (file: FileResponse) => void;
   onDelete: (fileId: number) => void;
-  onContextMenu: (e: React.MouseEvent, file: FileResponse) => void;
-  children: FileResponse[];
+  onContextMenu: (e: React.MouseEvent, file: FileBaseResponse) => void;
+  children: FileBaseResponse[];
   isLoading: boolean;
-  loadFolderContent: (folderId: number) => Promise<FileResponse[]>;
-  folderContents: { [key: number]: FileResponse[] };
+  loadFolderContent: (folderId: number) => Promise<FileBaseResponse[]>;
+  loadFileContent: (fileId: number) => Promise<FileResponse>;
+  folderContents: { [key: number]: FileBaseResponse[] };
 }
 
 function FileTreeItem({
@@ -30,6 +31,7 @@ function FileTreeItem({
   children,
   isLoading,
   loadFolderContent,
+  loadFileContent,
   folderContents,
   onDragStart,
   onDragOver,
@@ -38,11 +40,11 @@ function FileTreeItem({
   draggedFile,
   dragOverFolder,
 }: FileTreeItemProps & {
-  onDragStart: (file: FileResponse) => void;
+  onDragStart: (file: FileBaseResponse) => void;
   onDragOver: (folderId: number) => void;
   onDragLeave: () => void;
-  onDrop: (folderId: number, draggedFile: FileResponse) => void;
-  draggedFile: FileResponse | null;
+  onDrop: (folderId: number, draggedFile: FileBaseResponse) => void;
+  draggedFile: FileBaseResponse | null;
   dragOverFolder: number | null;
 }) {
   const isFolder = file.type === FileType.FOLDER;
@@ -70,7 +72,14 @@ function FileTreeItem({
       }
       onToggleFolder(file.id);
     } else {
-      onSelectFile(file);
+      // 点击文件时加载完整内容（包含content）
+      try {
+        const fileWithContent = await loadFileContent(file.id);
+        onSelectFile(fileWithContent);
+      } catch (error) {
+        console.error("Failed to load file content:", error);
+        onSelectFile(file as FileResponse);
+      }
     }
   };
 
@@ -230,6 +239,7 @@ function FileTreeItem({
                 }
                 isLoading={false}
                 loadFolderContent={loadFolderContent}
+                loadFileContent={loadFileContent}
                 folderContents={folderContents}
                 onDragStart={onDragStart}
                 onDragOver={onDragOver}
@@ -256,14 +266,14 @@ function FileTreeItem({
 interface FileManagerProps {
   onFileSelect: (file: FileResponse | null) => void;
   selectedFile: FileResponse | null;
-  files: FileResponse[];
+  files: FileBaseResponse[];
   loading: boolean;
   error: string | null;
   rootFolderName?: string;
   createFile: (fileData: any) => Promise<FileResponse>;
   updateFile: (fileId: number, fileData: any) => Promise<FileResponse>;
   deleteFile: (fileId: number, recursive?: boolean) => Promise<void>;
-  loadFolderContent: (folderId: number) => Promise<FileResponse[]>;
+  loadFolderContent: (folderId: number) => Promise<FileBaseResponse[]>;
   loadFileContent: (fileId: number) => Promise<FileResponse>;
 }
 
@@ -291,7 +301,7 @@ export function FileManager({
 
   // 重命名相关状态
   const [showRenameModal, setShowRenameModal] = useState(false);
-  const [renameFile, setRenameFile] = useState<FileResponse | null>(null);
+  const [renameFile, setRenameFile] = useState<FileBaseResponse | null>(null);
   const [renameNewName, setRenameNewName] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
 
@@ -300,10 +310,10 @@ export function FileManager({
   const [deleteFileId, setDeleteFileId] = useState<number | null>(null);
 
   // 拖拽相关状态
-  const [draggedFile, setDraggedFile] = useState<FileResponse | null>(null);
+  const [draggedFile, setDraggedFile] = useState<FileBaseResponse | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<number | null>(null);
   const [showMoveConfirmModal, setShowMoveConfirmModal] = useState(false);
-  const [moveSourceFile, setMoveSourceFile] = useState<FileResponse | null>(
+  const [moveSourceFile, setMoveSourceFile] = useState<FileBaseResponse | null>(
     null,
   );
   const [moveTargetFolderId, setMoveTargetFolderId] = useState<number | null>(
@@ -312,7 +322,7 @@ export function FileManager({
 
   // 文件夹内容状态
   const [folderContents, setFolderContents] = useState<{
-    [key: number]: FileResponse[];
+    [key: number]: FileBaseResponse[];
   }>({});
   const [loadingFolders, setLoadingFolders] = useState<Set<number>>(new Set());
 
@@ -345,7 +355,7 @@ export function FileManager({
         });
 
         const results = await Promise.all(loadPromises);
-        const newFolderContents: { [key: number]: FileResponse[] } = {};
+        const newFolderContents: { [key: number]: FileBaseResponse[] } = {};
         results.forEach(({ folderId, contents }) => {
           newFolderContents[folderId] = contents;
         });
@@ -363,7 +373,7 @@ export function FileManager({
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
-    file: FileResponse;
+    file: FileBaseResponse;
   } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -392,21 +402,11 @@ export function FileManager({
   }, []);
 
   const handleSelectFile = useCallback(
-    async (file: FileResponse) => {
-      if (file.type === FileType.FILE) {
-        // 点击文件时加载文件内容
-        try {
-          const fileWithContent = await loadFileContent(file.id);
-          onFileSelect(fileWithContent);
-        } catch (error) {
-          console.error("Failed to load file content:", error);
-          onFileSelect(file);
-        }
-      } else {
-        onFileSelect(file);
-      }
+    (file: FileResponse) => {
+      // FileTreeItem 已经加载了文件内容，直接传递给父组件
+      onFileSelect(file);
     },
-    [onFileSelect, loadFileContent],
+    [onFileSelect],
   );
 
   const handleLoadFolderContent = async (folderId: number) => {
@@ -444,7 +444,7 @@ export function FileManager({
   };
 
   const handleContextMenu = useCallback(
-    (e: React.MouseEvent, file: FileResponse) => {
+    (e: React.MouseEvent, file: FileBaseResponse) => {
       e.preventDefault();
       setContextMenu({
         x: e.clientX,
@@ -464,7 +464,7 @@ export function FileManager({
     setContextMenu(null);
   };
 
-  const openRenameModal = (file: FileResponse) => {
+  const openRenameModal = (file: FileBaseResponse) => {
     setRenameFile(file);
     setRenameNewName(file.name);
     setRenameError(null);
@@ -526,7 +526,7 @@ export function FileManager({
       });
 
       // 更新文件系统缓存
-      const updateFileInCache: any = (files: FileResponse[]) => {
+      const updateFileInCache: any = (files: FileBaseResponse[]) => {
         return files.map((file) => {
           if (file.id === renameFile.id) {
             return updatedFile;
@@ -585,7 +585,7 @@ export function FileManager({
       }
 
       // 从文件系统缓存中移除删除的文件/文件夹
-      const removeFileFromCache = (files: FileResponse[]) => {
+      const removeFileFromCache = (files: FileBaseResponse[]) => {
         return files.filter((file) => file.id !== deleteFileId);
       };
 
@@ -610,7 +610,7 @@ export function FileManager({
   };
 
   // 拖拽相关处理函数
-  const handleDragStart = (file: FileResponse) => {
+  const handleDragStart = (file: FileBaseResponse) => {
     setDraggedFile(file);
     setContextMenu(null);
   };
@@ -623,7 +623,7 @@ export function FileManager({
     setDragOverFolder(null);
   };
 
-  const handleDrop = (folderId: number, draggedFile: FileResponse) => {
+  const handleDrop = (folderId: number, draggedFile: FileBaseResponse) => {
     setDragOverFolder(null);
     setMoveSourceFile(draggedFile);
     setMoveTargetFolderId(folderId);
@@ -639,7 +639,7 @@ export function FileManager({
       });
 
       // 从原文件夹中移除文件
-      const removeFileFromCache = (files: FileResponse[]) => {
+      const removeFileFromCache = (files: FileBaseResponse[]) => {
         return files.filter((file) => file.id !== moveSourceFile.id);
       };
 
@@ -772,6 +772,7 @@ export function FileManager({
               }
               isLoading={loadingFolders.has(file.id)}
               loadFolderContent={handleLoadFolderContent}
+              loadFileContent={loadFileContent}
               folderContents={folderContents}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}

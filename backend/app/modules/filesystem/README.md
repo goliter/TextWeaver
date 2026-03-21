@@ -82,17 +82,47 @@
 | path | str | 文件路径 |
 | content | str | 文件内容（文件夹为null） |
 | size | int | 文件大小 |
-| user_id | int | 所属用户ID |
+| flow_id | int | 所属工作流ID |
 | parent_id | int | 父文件夹ID |
 | created_at | datetime | 创建时间 |
 | updated_at | datetime | 更新时间 |
 
+### FileBaseResponse
+文件列表响应模型（不包含content，用于列表查询）
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| id | int | 文件ID |
+| name | str | 文件名 |
+| type | FileType | 文件类型：file/folder |
+| path | str | 文件路径 |
+| size | int | 文件大小（字节） |
+| flow_id | int | 所属工作流ID |
+| parent_id | int | 父文件夹ID |
+| created_at | datetime | 创建时间 |
+| updated_at | datetime | 更新时间 |
+
+### FileResponse
+文件详情响应模型（继承 FileBaseResponse，包含content）
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| content | str | 文件内容（仅文件类型有） |
+
 ### FileWithChildren
-带子文件的响应模型（继承 FileResponse）
+文件树响应模型（继承 FileBaseResponse，不包含content）
 
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
 | children | List[FileWithChildren] | 子文件/文件夹列表 |
+
+### FileWithChildrenAndContent
+文件树响应模型（继承 FileResponse，包含content）
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| children | List[FileWithChildrenAndContent] | 子文件/文件夹列表 |
+| content | str | 文件内容（仅文件类型有） |
 
 ## API 接口
 

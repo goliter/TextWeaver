@@ -51,7 +51,7 @@ def build_file_tree(files: List[models.File]) -> List[schemas.FileWithChildren]:
     return root_files
 
 
-@router.get("", response_model=List[schemas.FileResponse])
+@router.get("", response_model=List[schemas.FileBaseResponse])
 def get_files(
     flow_id: int,
     parent_id: Optional[Union[int, str]] = Query(None, description="父文件夹ID，None表示根目录"),
@@ -102,7 +102,7 @@ def get_file_tree(
     return file_tree
 
 
-@router.get("/all", response_model=List[schemas.FileResponse])
+@router.get("/all", response_model=List[schemas.FileBaseResponse])
 def get_all_files(
     flow_id: int,
     db: Session = Depends(get_db),

@@ -20,19 +20,22 @@ export interface FileUpdate {
   parent_id?: number;
 }
 
-export interface FileResponse {
+export interface FileBaseResponse {
   id: number;
   name: string;
   type: FileType;
   path: string;
-  content: string | null;
   size: number;
-  user_id: number;
+  flow_id: number;
   parent_id: number | null;
   created_at: string;
   updated_at: string | null;
 }
 
-export interface FileWithChildren extends FileResponse {
+export interface FileResponse extends FileBaseResponse {
+  content: string | null;
+}
+
+export interface FileWithChildren extends FileBaseResponse {
   children?: FileWithChildren[];
 }

@@ -117,14 +117,13 @@ const WorkflowDetail: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // 获取工作流详情
+      // 获取工作流详情（包含节点和边）
       const workflowData = await workflowApi.getWorkflow(parseInt(workflowId));
       setWorkflow(workflowData);
 
-      // 获取节点
-      const nodesData = await workflowApi.getNodes(parseInt(workflowId));
+      // 从工作流详情中提取节点
       setNodes(
-        nodesData.map((node: any) => ({
+        workflowData.nodes.map((node: any) => ({
           ...node,
           id: node.id.toString(),
           type: node.node_type,
@@ -135,10 +134,9 @@ const WorkflowDetail: React.FC = () => {
         })),
       );
 
-      // 获取边
-      const edgesData = await workflowApi.getEdges(parseInt(workflowId));
+      // 从工作流详情中提取边
       setEdges(
-        edgesData.map((edge: any) => ({
+        workflowData.edges.map((edge: any) => ({
           ...edge,
           id: edge.id.toString(),
           source:

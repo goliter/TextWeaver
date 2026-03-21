@@ -25,11 +25,11 @@ class FileUpdate(BaseModel):
     parent_id: Optional[int] = None
 
 
-class FileResponse(BaseModel):
+class FileBaseResponse(BaseModel):
+    """文件列表响应模型（不包含content）"""
     id: int
     name: str
     type: FileType
-    content: Optional[str] = None
     size: int
     flow_id: int
     parent_id: Optional[int] = None
@@ -41,11 +41,29 @@ class FileResponse(BaseModel):
         from_attributes = True
 
 
-class FileWithChildren(FileResponse):
+class FileResponse(FileBaseResponse):
+    """文件详情响应模型（包含content）"""
+    content: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class FileWithChildren(FileBaseResponse):
+    """文件树节点（不包含content）"""
     children: Optional[List["FileWithChildren"]] = []
     
     class Config:
         from_attributes = True
 
 
+class FileWithChildrenAndContent(FileResponse):
+    """文件树节点（包含content）"""
+    children: Optional[List["FileWithChildrenAndContent"]] = []
+    
+    class Config:
+        from_attributes = True
+
+
 FileWithChildren.update_forward_refs()
+FileWithChildrenAndContent.update_forward_refs()
